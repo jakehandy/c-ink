@@ -1,12 +1,28 @@
 #!/usr/bin/env python3
 """Draws Clawd's poses and writes them for the renderer.
 
-Clawd is the 12 x 8 pixel crab from Claude Code's art (the shape Jake traced
-from Anthropic's own Clawd pictures): a block body, arms out at the sides,
-four legs, solid black eyes. Each pose is composed here from that body, eye
-shapes and small props, on a 40 x 24 grid of half pixels (4 pixels free
-either side and above the head for hats and marks), and packed 2 bits a
-half pixel into firmware/components/cink_core/src/clawd_data.inc.
+Clawd is the pixel crab from Claude Code's art. Every pose here is built on
+one grid of half pixels (one Clawd pixel is 2 x 2 of them):
+
+    body   16 x 12, eyes 2 x 2, two in from each side and two down
+    arms   4 x 4 at the sides, four rows down
+    legs   2 wide and 4 long at 0, 4, 10 and 14 from the body's left edge
+
+The standing Clawd, the raised arm, the side view with its lowered arm, the
+happy eyes, the hard hat and wrench, the wizard hat, the fedora and
+magnifier, the skateboard, the checkered flag, the dumbbells, the float, the
+confetti jump, the crawl and the laptop are traced pixel for pixel from Anthropic's own
+Clawd pictures. The other poses
+reuse those same parts and add a small mark, or one of C-Ink's own hats.
+
+Frames are 40 x 32 half pixels (8 free either side of the 24 x 16 figure and
+16 above for hats, flags and marks), packed 4 bits a half pixel into
+firmware/components/cink_core/src/clawd_data.inc:
+
+    0 nothing   1 body      2 black   3 white
+    4 shade (the far side in three-quarter views)
+    5 gray      6 light (the hard hat's yellow)
+    7 black drawn on the body (eyes, glasses): white on a black-only panel
 
     python3 tools/clawdgen.py [--preview sheet.png]
 """
@@ -14,251 +30,185 @@ import argparse
 import os
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-GW, GH = 40, 24          # half-pixel grid
-BX, BY = 8, 8            # where body pixel (0, 0) starts, in half pixels
-T, B, K, Wh = 0, 1, 2, 3  # transparent, body (accent), black, white
+GW, GH = 40, 32          # frame, in half pixels
+BX, BY = 8, 16           # where the figure's 24 x 16 box starts in the frame
+N, B, K, Wh, S, G, L, E = range(8)
+ON_BODY = (B, S, L, E)
 
-# Bodies: 12 wide, rows -2..7 (two rows above the head for raised arms).
-# '#' body, 'E' an eye spot (body, the eye is drawn on top), '.' nothing.
-BODIES = {
-    "front": [
-        "............",
-        "............",
-        "..########..",
-        "..#E####E#..",
-        "############",
-        "############",
-        "..########..",
-        "..########..",
-        "..#.#..#.#..",
-        "..#.#..#.#..",
-    ],
-    "up": [
-        "##........##",
-        "##........##",
-        "############",
-        "###E####E###",
-        "..########..",
-        "..########..",
-        "..########..",
-        "..########..",
-        "..#.#..#.#..",
-        "..#.#..#.#..",
-    ],
-    "one": [  # right arm raised to the shoulder line, holding something up
-        "..........##",
-        "..........##",
-        "..##########",
-        "..#E####E#..",
-        "##########..",
-        "##########..",
-        "..########..",
-        "..########..",
-        "..#.#..#.#..",
-        "..#.#..#.#..",
-    ],
-    "side": [  # turned to the left: the near arm is the snout, the far one hidden
-        "............",
-        "............",
-        "..########..",
-        "..#E##E###..",
-        "..########..",
-        "##########..",
-        "##########..",
-        "..########..",
-        "..#.#..#.#..",
-        "..#.#..#.#..",
-    ],
-    "side_up": [  # turned left, far arm up (holding a flag)
-        "............",
-        "........##..",
-        "..########..",
-        "..#E##E###..",
-        "..########..",
-        "##########..",
-        "##########..",
-        "..########..",
-        "..#.#..#.#..",
-        "..#.#..#.#..",
-    ],
-    "back": [  # turned away, heads down
-        "............",
-        "............",
-        "..########..",
-        "..########..",
-        "############",
-        "############",
-        "..########..",
-        "..########..",
-        "..#.#..#.#..",
-        "..#.#..#.#..",
-    ],
-    "walk": [  # side on, mid-step
-        "............",
-        "............",
-        "..########..",
-        "..#E##E###..",
-        "..########..",
-        "##########..",
-        "##########..",
-        "..########..",
-        "..#.#..#.#..",
-        ".#...#..#..#",
-    ],
-    "tap": [  # tapping a foot
-        "............",
-        "............",
-        "..########..",
-        "..#E####E#..",
-        "############",
-        "############",
-        "..########..",
-        "..########..",
-        "..#.#..#.#..",
-        "..#.#..#....",
-    ],
-    "short": [  # floating: legs tucked to stubs
-        "............",
-        "............",
-        "..########..",
-        "..#E####E#..",
-        "############",
-        "############",
-        "..########..",
-        "..########..",
-        "..#.#..#.#..",
-        "............",
-    ],
-}
-
-# Eyes, drawn in each 2 x 2 eye spot (half pixels), left eye then right.
-EYES = {
-    "open": ["KK", "KK"],
-    "left": ["K.", "K."],     # pupils to the left side of the spot... kept solid below
-    "closed": ["..", "KK"],
-    "happy": [".K", "K."],    # a tiny ^ (drawn mirrored for the right eye)
-    "none": ["..", ".."],
-}
+CH = {"#": B, "k": K, "K": E, "w": Wh, "d": S, "g": G, "o": L, "x": N}
 
 
 class Frame:
+    """Coordinates are half pixels relative to the figure's box: the standing
+    body is x 4..19, y 0..11, its feet reach y 15."""
+
     def __init__(self):
-        self.px = [[T] * GW for _ in range(GH)]
+        self.px = [[N] * GW for _ in range(GH)]
+
+    def get(self, x, y):
+        return self.px[BY + y][BX + x]
 
     def put(self, x, y, v):
-        if 0 <= x < GW and 0 <= y < GH and v is not None:
-            self.px[y][x] = v
+        cx, cy = BX + x, BY + y
+        assert 0 <= cx < GW and 0 <= cy < GH, (x, y)
+        if v == K and self.px[cy][cx] in ON_BODY:
+            v = E
+        self.px[cy][cx] = v
 
-    def block(self, bx, by, v):  # one body pixel (2 x 2 half pixels), body coords
-        for dy in range(2):
-            for dx in range(2):
-                self.put(BX + 2 * bx + dx, BY + 2 * by + dy, v)
+    def rect(self, x, y, w, h, v=B):
+        for j in range(h):
+            for i in range(w):
+                self.put(x + i, y + j, v)
 
-    def art(self, hx, hy, rows):
-        """Half-pixel art at half-pixel coords. k black, w white, # body, x erase."""
-        m = {"k": K, "w": Wh, "#": B, "x": T}
+    def art(self, x, y, rows):
+        """'#' body, 'd' shade, 'k' black, 'K' black on the body, 'w' white,
+        'g' gray, 'o' light, 'x' erase, anything else leaves the pixel."""
         for j, row in enumerate(rows):
             for i, ch in enumerate(row):
-                if ch in m:
-                    self.put(hx + i, hy + j, m[ch])
+                if ch in CH:
+                    self.put(x + i, y + j, CH[ch])
+
+    def mirrored(self):
+        """Flipped left to right about the figure's box."""
+        f = Frame()
+        for cy in range(GH):
+            for cx in range(GW):
+                mx = 2 * BX + 23 - cx
+                if 0 <= mx < GW:
+                    f.px[cy][mx] = self.px[cy][cx]
+                else:
+                    assert self.px[cy][cx] == N
+        return f
 
 
-def pose(body="front", eyes="open", lift=0, eye_shift=0, legs=True):
+# ------------------------------------------------------------------ the body
+ARM_Y = {"mid": 4, "dip": 5, "low": 6, "high": 2, "up": -1}
+LEG_X = (4, 8, 14, 18)
+
+
+def eye(f, x, y, kind):
+    if kind == "open":
+        f.art(x, y, ["KK", "KK"])
+    elif kind == "closed":
+        f.art(x, y + 1, ["KK"])
+    elif kind == "happy":
+        f.art(x - 1, y, [".KK.", "K..K"])
+
+
+def body(dy=0, left="mid", right="mid", eyes="open", look=0, legs=(4, 4, 4, 4), arm_w=4):
+    """The standing Clawd. dy moves him (negative is up); left / right pick an
+    arm height from ARM_Y or None; eyes is one kind or a (left, right) pair."""
     f = Frame()
-    spots = []
-    rows = BODIES[body]
-    for r, row in enumerate(rows):
-        by = r - 2 + lift
-        if not legs and r >= 8:
-            continue
-        for c, ch in enumerate(row):
-            if ch in "#E":
-                f.block(c, by, B)
-            if ch == "E":
-                spots.append((c, by))
-    # Eyes: solid black squares, or shapes, inside their spots.
-    for i, (c, r) in enumerate(spots):
-        hx, hy = BX + 2 * c + eye_shift, BY + 2 * r
-        e = eyes if not isinstance(eyes, tuple) else eyes[i]
-        if e == "open":
-            f.art(hx, hy, ["kk", "kk"])
-        elif e == "closed":
-            f.art(hx, hy, ["##", "kk"])
-        elif e == "happy":
-            f.art(hx - 1, hy, ["#kk#", "k##k"])
-        elif e == "wide":
-            f.art(hx, hy - 1, ["kk", "kk", "kk"])
+    f.rect(4, dy, 16, 12)
+    if left:
+        f.rect(4 - arm_w, dy + ARM_Y[left], arm_w, 4)
+    if right:
+        f.rect(20, dy + ARM_Y[right], arm_w, 4)
+    for x, n in zip(LEG_X, legs):
+        f.rect(x, dy + 12, 2, n)
+    kinds = eyes if isinstance(eyes, tuple) else (eyes, eyes)
+    eye(f, 6 + look, dy + 2, kinds[0])
+    eye(f, 16 + look, dy + 2, kinds[1])
     return f
 
 
-def body_frame(**kw):
-    return pose(**kw)
+# Three-quarter view, walking to the right, as traced. The far side is shaded.
+CRAWL = [
+    "...dddd############.....",
+    "...dddd############.....",
+    "...dddd############.....",
+    "...dddd##KK######KK.....",
+    "...dddd##KK######KK.....",
+    "...dddd###############..",
+    "...dddd###############..",
+    "...dddd###############..",
+    "...dddd###############..",
+    "...dddd############.....",
+    "...dddd############.....",
+    "...dd..##....##..##.....",
+    "..ddd.###...###.###.....",
+    "..dd..##....##..##......",
+]
 
 
-# ---------------------------------------------------------------- marks
-def bang(f, x=33, y=0):
+def crawl():
+    f = Frame()
+    f.art(0, 2, CRAWL)
+    return f
+
+
+# ------------------------------------------------------------------- marks
+def bang(f, x=26, y=-8):
     f.art(x, y, ["kk", "kk", "kk", "kk", "..", "kk"])
 
-def question(f, x=32, y=0):
+def question(f, x=25, y=-8):
     f.art(x, y, [".kkk.", "k...k", "...k.", "..k..", ".....", "..k.."])
 
-def zz(f):
-    f.art(30, 3, ["kkk", ".k.", "kkk"])
-    f.art(34, 0, ["kkkk", "..k.", ".k..", "kkkk"])
+def zz(f, x=22, y=-4):
+    f.art(x, y + 3, ["kkk", ".k.", "kkk"])
+    f.art(x + 4, y, ["kkkk", "..k.", ".k..", "kkkk"])
 
-def dots(f):
+def dots(f, x=22, y=-4):
     for i in range(3):
-        f.art(29 + i * 3, 4, ["kk", "kk"])
+        f.art(x + i * 3, y, ["kk", "kk"])
 
 def bubbles(f):
-    f.art(30, 5, ["kk", "kk"])
-    f.art(33, 2, [".kk.", "k..k", ".kk."])
-    f.art(36, 0, ["kk", "kk"])
+    f.art(22, -3, ["kk", "kk"])
+    f.art(25, -7, [".kk.", "k..k", "k..k", ".kk."])
 
-def heart(f):
-    f.art(31, 0, [".kk.kk.", "kkkkkkk", "kkkkkkk", ".kkkkk.", "..kkk..", "...k..."])
+def heart(f, x=23, y=-8):
+    f.art(x, y, [".kk.kk.", "kkkkkkk", "kkkkkkk", ".kkkkk.", "..kkk..", "...k..."])
 
 def drop(f):
-    f.art(5, 3, [".k.", ".k.", "kkk", "kkk", ".k."])
+    f.art(0, -3, [".k.", ".k.", "kkk", "kkk", ".k."])
 
-def sparkle(f, x=32, y=0):
+def sparkle(f, x=25, y=-8):
     f.art(x, y, ["..k..", "..k..", "kkkkk", "..k..", "..k.."])
 
 def rain(f):
     for i in range(4):
-        f.art(9 + i * 7, i % 2, [".k", ".k", "k.", "k."])
+        f.art(1 + i * 7, -8 + i % 2, [".k", ".k", "k.", "k."])
 
 def shiver(f):
-    for x in (3, 35):
-        f.art(x, 11, ["k.", ".k", "k.", ".k", "k."])
+    for x in (-4, 26):
+        f.art(x, 2, ["k.", ".k", "k.", ".k", "k.", ".k"])
 
-def note(f):
-    f.art(32, 0, ["..kkk", "..k.k", "..k.k", "kkk..", "kkk.."])
+def note(f, x=24, y=-9):
+    f.art(x, y, ["..kkk", "..k.k", "..k.k", "kkk..", "kkk.."])
 
-def steam(f):
-    f.art(34, 0, ["k..k", ".k..k", "k..k"])
-
-def confetti(f):
-    for x, y, v in ((2, 2, K), (9, 0, B), (14, 4, K), (21, 1, B), (27, 3, K), (33, 0, B), (37, 4, K), (5, 7, B),
-                    (36, 9, B), (1, 12, K)):
-        f.art(x, y, ["kk"] if v == K else ["##"])
+def waves(f):
+    f.art(25, -4, ["k.", ".k", ".k", ".k", "k."])
+    f.art(28, -5, ["k.", ".k", ".k", ".k", ".k", ".k", "k."])
 
 def poof(f):
-    f.art(3, 21, ["k.k", ".k."])
-    f.art(35, 21, ["k.k", ".k."])
+    f.art(-5, 13, ["k.k", ".k."])
+    f.art(26, 13, ["k.k", ".k."])
 
 def shadow(f):
-    f.art(12, 23, ["k.k.k.k.k.k.k.k"])
+    f.art(4, 15, ["k.k.k.k.k.k.k.k."])
+
+def speed(f):
+    for i, w in enumerate((4, 6, 4)):
+        f.art(26, 4 + i * 4, ["k" * w])
+
+def coin(f):
+    f.art(25, -8, [".kk.", "k##k", "k##k", ".kk."])
+
+def confetti(f):
+    # Scattered as in the reference; its pinks and blues become black, gray and body.
+    for x, y, rows in ((-6, -15, ["k", "k"]), (-3, -9, ["##"]), (4, -16, ["#", "#"]), (5, -12, ["k.", ".k"]),
+                       (9, -10, ["g"]), (8, -7, ["g", "g"]), (-6, -6, ["g.", ".g"]), (17, -13, ["g.", ".g"]),
+                       (20, -16, ["##"]), (20, -14, ["k.", ".k"]), (25, -16, ["kk"]), (23, -11, ["##"]),
+                       (18, -9, ["gg"]), (26, -8, ["g.", ".g"])):
+        f.art(x, y, rows)
 
 
-# ---------------------------------------------------------------- props
-def shades(f, lift=0):
-    y = BY + 2 * (1 + lift)
-    f.art(BX + 4, y, ["kkkkkkkkkkkkkkkk", "kkkk.......kkkkk"[:16]])
-    f.art(BX + 4, y, ["kkkkkkkkkkkkkkkk", "kkkkk######kkkkk", ".kkk########kkk."])
+# ------------------------------------------------------------------- props
+def shades(f):
+    f.art(4, 2, ["kkkkkkkkkkkkkkkk", ".kkkkk....kkkkk.", "..kkk......kkk.."])
 
 def paper(f):
-    f.art(BX - 2, BY + 4, [
+    f.art(2, 5, [
         "kkkkkkkkkkkkkkkkkkkk",
         "kwwwwwwwwwkwwwwwwwwk",
         "kwkkkkkwwwkwkkkkkwwk",
@@ -271,154 +221,416 @@ def paper(f):
     ])
 
 def mug(f):
-    f.art(31, 0, ["k.k.", ".k.k", "k.k."])
-    f.art(30, 4, ["kkkkk.", "kwwwkkk", "kwwwk.k", "kwwwkkk", "kkkkk.."])
+    f.art(22, -8, ["k.k.", ".k.k", "k.k."])
+    f.art(21, -4, ["kkkkk..", "kwwwkkk", "kwwwk.k", "kwwwkkk", "kkkkk.."])
 
-def laptop(f):
-    f.art(BX + 2, BY + 8, [
-        "kkkkkkkkkkkkkkkkkkkk",
-        "kwwwwwwwwwwwwwwwwwwk",
-        "kwwwwwwwkkkkwwwwwwwk",
-        "kwwwwwwwwwwwwwwwwwwk",
-        "kwwwwwwwwwwwwwwwwwwk",
-        "kkkkkkkkkkkkkkkkkkkk",
-        "kkkkkkkkkkkkkkkkkkkkkk"[:20],
-    ])
-
-def speed(f):
-    for i, w in enumerate((4, 6, 4)):
-        f.art(33 + (6 - w), 11 + i * 4, ["k" * w])
+# Traced: the yellow shell is light, its ribs, badge and band are body colour.
+HARD_HAT = [
+    "......oooooo......",
+    "....o#oooooo#o....",
+    "..ooo#oo##oo#ooo..",
+    "..ooo#o####o#ooo..",
+    ".oooo#o####o#oooo.",
+    ".oooo#oo##oo#oooo.",
+    ".ooooo#oooo#ooooo.",
+    ".################.",
+    "oooooooooooooooooo",
+]
+WRENCH = [
+    ".g...g.",
+    "gg...gg",
+    "gg...gg",
+    "ggg.ggg",
+    ".ggggg.",
+    "..ggg..",
+    "..ggg..",
+    "..ggg..",
+    "..ggg..",
+    "...gg..",
+    "...gg..",
+    "...g...",
+]
+BOLT = ["kkkk", "kkkk", ".kk.", ".kk.", ".kk."]
 
 def hard_hat(f):
-    f.art(BX + 4, BY - 5, [
-        "....kkkkkkkk....",
-        "..kkkkkwwkkkkk..",
-        ".kkkkkkwwkkkkkk.",
-        ".kkkkkkwwkkkkkk.",
-        "kkkkkkkkkkkkkkkkkk"[:18],
-    ])
+    f.art(3, -8, HARD_HAT)
 
 def wrench(f):
-    f.art(32, 1, ["k.k", "k.k", "kkk", ".k.", ".k.", ".k.", ".k."])
+    f.art(21, -7, WRENCH)
+    f.art(25, 10, BOLT)
+
+# Traced: purple becomes black, the darker band body colour, the stars white.
+WIZARD_HAT = [
+    "......k.............",
+    ".....kk.............",
+    ".....kk.............",
+    ".....kkk............",
+    "....kkkk............",
+    "....kkwkkkk.........",
+    ".....kkkkwkkkk......",
+    ".....kkkkkkkkwk.....",
+    ".....kwkkkkkkkkk....",
+    ".....kkkkkwkkkkk....",
+    "....kkkkkkkkkkkkk...",
+    "...kkkwkkkkkkwkkk...",
+    "..################..",
+    "..################..",
+    ".kkwkkkkkkkwkkkkkkk.",
+    "kkkkkkkwkkkkkkkwkkkk",
+    "kk................kk",
+]
 
 def wizard_hat(f):
-    f.art(BX + 3, BY - 8, [
-        "..........kk......",
-        ".........kkkk.....",
-        "........kkwkk.....",
-        ".......kkkkkkk....",
-        "......kkwkkkkkk...",
-        ".....kkkkkkkwkk...",
-        "....kkkwkkkkkkkk..",
-        "..kkkkkkkkkkkkkkkk",
-    ])
+    f.art(2, -16, WIZARD_HAT)
 
-def wand(f):
-    f.art(33, 2, ["..w", ".k.", "k.."])
-    sparkle(f, 34, 0)
+# The fedora and magnifier, with the three-quarter body they were drawn on.
+DETECTIVE = [
+    ".......kkkkk.kkkk.......",
+    "......kkkkkkkkkkkk......",
+    "......kkkkkkkkkkkk......",
+    ".....kkkkkkkkkkkkkk.....",
+    ".....##############.....",
+    ".....##############.....",
+    "...kkkkkkkkkkkkkkkkkk...",
+    "..kkkkkkkkkkkkkkkkkkkk..",
+    "....d##########K####K...",
+    "....d#########K#####wK..",
+    "dd############K##KKKwK..",
+    "dd######KKK###K##KKKwK..",
+    "dd############K##KKKwK..",
+    "dd#############K####KK#.",
+    "....d###########KKKKKKK.",
+    "....d################kkk",
+    "...dd#################kk",
+    "...dd##################.",
+    "...dd..##....##..##.....",
+    "..ddd.###...###.###.....",
+    "..dd..##....##..##......",
+    "..dd..##....##..##......",
+]
 
-def fedora(f, lift=0):
-    y = BY - 4 + 2 * lift
-    f.art(BX + 3, y, [
-        "...kkkkkkkkkk...",
-        "...kkkkkkkkkk...",
-        "...##########...",
-        "kkkkkkkkkkkkkkkk",
-    ])
+# Three-quarter view on a skateboard, legs trailing.
+SKATE = [
+    "....ddd########.........",
+    "....ddd#############....",
+    "....ddd#############....",
+    "ddd#################....",
+    "ddd######KK######KK####.",
+    "ddd######KK######KK####.",
+    "ddd####################.",
+    "....ddd################.",
+    "....ddd#############....",
+    "....ddd#############....",
+    "....ddd#############....",
+    "...dddd#############....",
+    "...dd...##....#######...",
+    "...ddd..##......##.##...",
+    "....dd...##.....##.##...",
+    ".........##......##.##..",
+    "..kk.............##.##..",
+    "...kk...................",
+    "....kkkkkkkkkk.......kkk",
+    "......oo.....kkkkkkkkk..",
+    ".....ooko.........oo....",
+    ".....okoo........ooko...",
+    "......oo.........okoo...",
+    "..................oo....",
+]
 
-def monocle(f):
-    # A magnifier on the front eye (body pixel 3, row 1), handle down and out.
-    hx, hy = BX + 2 * 3, BY + 2 * 1
-    f.art(hx - 2, hy - 2, [".kkkk.", "kwwwwk", "kwkkwk", "kwkkwk", "kwwwwk", ".kkkk."])
-    f.art(hx - 4, hy + 4, ["..k", ".k.", "k.."])
+FLAG = [
+    "...kwk",
+    "..kwkw",
+    ".kwkwk",
+    "kwkwkw",
+    "wkwkwk",
+    "kwkwk.",
+    "wkw...",
+    "kwk...",
+    ".k....",
+]
+WEIGHT = [".kk.", "kkkk", "kkkk", "kkkk", ".kk."]
 
-def skateboard(f):
-    f.art(BX - 2, 19, ["kkkkkkkkkkkkkkkkkkkkkkkkkkkk"])
-    f.art(BX - 3, 18, ["k"])
-    f.art(BX + 24, 18, ["k"])
-    f.art(BX + 1, 21, ["kkk", "kwk", "kkk"][:3])
-    f.art(BX + 18, 21, ["kkk", "kwk", "kkk"][:3])
+# Mid-jump, tilted, one arm thrown up.
+JUMP = [
+    ".....................##.",
+    "....................###.",
+    "............###########.",
+    "........###############.",
+    "....###################.",
+    "....############KK####..",
+    "....############KK##....",
+    "....##KK############....",
+    "....##KK############....",
+    "....################....",
+    "....################....",
+    "####################....",
+    "####################....",
+    "####################....",
+    "####################....",
+    "....########..##..##....",
+    "....##..##....##..##....",
+    "....##..##....##..##....",
+    "....##..##....##..##....",
+    "....##..##....##..##....",
+    "....##..##..............",
+]
 
-def flag(f):
-    f.art(BX + 17, 0, [
-        "kwkwkwk",
-        "kkwkwkw",
-        "kwkwkwk",
-        "kkwkwkw",
-        "k......",
-        "k......",
-    ])
 
-def headband(f, lift=0):
-    f.art(BX + 4, BY + 2 * (0 + lift) + 1, ["wwwwwwwwwwwwwwww"])
-    f.art(BX + 4, BY + 2 * (0 + lift), ["kkkkkkkkkkkkkkkk"])
+# ------------------------------------------------- C-Ink's own hats and props
+# Drawn for C-Ink in the style of the traced ones, on the same body.
+VIKING = [
+    "k..................k",
+    "kk................kk",
+    "kwk....gggggg....kwk",
+    ".kwk.gggggggggg.kwk.",
+    "..kkggggggggggggkk..",
+    "..kkkkkkkkkkkkkkkk..",
+]
+SWORD = [".gg.", ".gg.", ".gg.", ".gg.", ".gg.", ".gg.", ".gg.", "kkkk", ".kk.", ".kk."]
+CAPTAIN = [
+    ".....kkkkkkkk.....",
+    "...kkwwwwwwwwkk...",
+    "..kwwwww##wwwwwk..",
+    "..kwwwww##wwwwwk..",
+    "...kkkkkkkkkkkk...",
+    ".kkkkkkkkkkkkkkkk.",
+]
+SPYGLASS = ["kk......", "kkggg...", "kkgggkkk", "kkgggkkk", "kkggg...", "kk......"]
+COWBOY = [
+    "........oooooooo........",
+    ".......oooooooooo.......",
+    ".......oooooooooo.......",
+    ".......##########.......",
+    "o......oooooooooo......o",
+    "oo....oooooooooooo....oo",
+    ".oooooooooooooooooooooo.",
+]
+LASSO = [".kkkk.", "k....k", "k....k", ".kkkk.", "..k...", "..k...", ".k....", ".k....", "k.....", "k....."]
+BUBBLE = [".kkkkk.", "kwwwwwk", "kwkwkwk", "kwwwwwk", ".kkkkk.", "..k...."]
+CAP = [
+    ".....kkkkkkkkkk.",
+    "....kkkkkkkkkkkk",
+    "....kkkk##kkkkkk",
+    "kkkkkkkkkkkkkkkk",
+]
+BOX = [
+    "kkkkkkkkkkkkkk",
+    "kooooo##oooook",
+    "kooooo##oooook",
+    "kooooooooooook",
+    "kooooooooooook",
+    "kooooooooooook",
+    "kkkkkkkkkkkkkk",
+]
+UMBRELLA = [
+    ".......kkkkkkkk.......",
+    "....kkkkkkkkkkkkkk....",
+    "..kkkkkkkkkkkkkkkkkk..",
+    ".kkkkkkkkkkkkkkkkkkkk.",
+    "kk.kkkkk.kkkk.kkkkk.kk",
+]
+BEANIE = [
+    "......kkkk......",
+    ".....kwwwwk.....",
+    "......kkkk......",
+    "...kkkkkkkkkk...",
+    "..kkkkkkkkkkkk..",
+    ".kkwkkwkkwkkwkk.",
+    "kkkkkkkkkkkkkkkk",
+]
+FLAKE = [".k.", "kkk", ".k."]
+CROWN = [
+    "k.....kk.....k",
+    "kk...kook...kk",
+    "kok.kooook.kok",
+    "kookoooooookok",
+    "ko#ooo##ooo#ok",
+    "kkkkkkkkkkkkkk",
+]
+PARTY_HAT = [
+    ".....kk.....",
+    ".....kk.....",
+    "....####....",
+    "....kkkk....",
+    "...######...",
+    "...kkkkkk...",
+    "..########..",
+    "..kkkkkkkk..",
+    ".##########.",
+    ".kkkkkkkkkk.",
+]
+BALLOON = [".kkkkk.", "k#####k", "k#w###k", "k#####k", "k#####k", ".k###k.", "..kkk..", "...k...",
+           "...k...", "..k....", "..k....", ".k.....", "k......"]
+CHEF = [
+    "..kkkk.kkkk.kkkk..",
+    ".kwwwwkwwwwkwwwwk.",
+    "kwwwwwwwwwwwwwwwwk",
+    "kwwwwwwwwwwwwwwwwk",
+    ".kwwwwwwwwwwwwwwk.",
+    "..kwwwwwwwwwwwwk..",
+    "..kwkwwkwwkwwkwk..",
+    "..kkkkkkkkkkkkkk..",
+]
+PAN = ["kkkkkkkk....", "kggggggkkkkk", ".kkkkkk....."]
 
-def dumbbells(f):
-    for x in (BX - 3, BX + 19):
-        f.art(x, 2, ["kk..kk", "kkkkkk", "kk..kk"])
 
-def float_lines(f):
-    f.art(BX + 5, 21, ["k.k.k.k.k.k.k"])
+def extras(P):
+    # Game night: horned helmet, sword up.
+    f = body(right="high"); f.art(2, -6, VIKING); f.art(23, -8, SWORD); P["viking"] = f
+    # Deploys going out: captain's hat and a spyglass.
+    f = body(right="high"); f.art(3, -6, CAPTAIN); f.art(22, -3, SPYGLASS); P["captain"] = f
+    # Issues to wrangle: cowboy hat and a lasso.
+    f = body(right="up"); f.art(0, -7, COWBOY); f.art(23, -12, LASSO); P["cowboy"] = f
+    # Customers waiting: a headset with its boom mic, a speech bubble.
+    f = body()
+    f.rect(6, -2, 12, 1, K); f.rect(4, -1, 2, 1, K); f.rect(18, -1, 2, 1, K)
+    f.rect(2, 0, 2, 5, K); f.rect(20, 0, 2, 5, K)
+    f.art(15, 5, ["....k", "...k.", "kkk.."])
+    f.art(23, -10, BUBBLE)
+    P["headset"] = f
+    # A delivery: courier cap, carrying the box.
+    f = body(); f.art(3, -4, CAP); f.art(5, 5, BOX); P["courier"] = f
+    # Rain: under an umbrella.
+    f = body(right="high"); f.art(6, -9, UMBRELLA); f.rect(21, -4, 1, 6, K)
+    for x, y in ((-3, -7), (0, -3), (-4, 1), (29, -2)):
+        f.art(x, y, [".k", ".k", "k.", "k."])
+    P["umbrella"] = f
+    # Snow: bobble hat and a scarf.
+    f = body(); f.art(4, -7, BEANIE)
+    f.rect(4, 8, 16, 2, K); f.art(14, 10, ["kkk", "kkk", "kkk", "w.w"])
+    for x, y in ((-4, -8), (24, -6), (25, 1), (-4, 0)):
+        f.art(x, y, FLAKE)
+    P["snow"] = f
+    # Releases: headphones on, tapping along.
+    f = body(eyes="happy", legs=(4, 4, 4, 2))
+    f.rect(6, -2, 12, 1, K); f.rect(4, -1, 2, 1, K); f.rect(18, -1, 2, 1, K)
+    for x in (2, 19):
+        f.art(x, 0, ["kkk", "kwk", "kwk", "kwk", "kkk"])
+    note(f)
+    P["headphones"] = f
+    # A release climbing: a crown.
+    f = body(left="up", right="up", eyes="happy"); f.art(5, -6, CROWN); sparkle(f); P["crown"] = f
+    # A birthday or a party on the calendar: party hat, arms up.
+    f = body(left="up", right="up", eyes="happy"); f.art(6, -10, PARTY_HAT)
+    for x, y, rows in ((-5, -6, ["k.", ".k"]), (-2, -10, ["##"]), (22, -11, ["g", "g"]), (26, -7, ["##"]), (27, -12, ["k.", ".k"])):
+        f.art(x, y, rows)
+    P["party"] = f
+    # Idle: drifting off under a balloon.
+    f = body(dy=-2, right="up", legs=(3, 1, 3, 1)); f.art(21, -16, BALLOON); shadow(f); P["balloon"] = f
+    # Lunch: a chef's hat and a pan.
+    f = body(right="high"); f.art(3, -8, CHEF); f.art(20, -1, PAN); P["chef"] = f
 
 
 def build():
     P = {}
-    P["calm"] = pose()
-    P["blink"] = pose(eyes="closed")
-    P["look-left"] = pose(eye_shift=-1)
-    P["look-right"] = pose(eye_shift=1)
-    P["wink"] = pose(eyes=("open", "closed"))
-    P["happy"] = pose("up", eyes="happy")
-    f = pose("one"); f.art(32, 0, ["k...", ".k..", "..k."]); f.art(36, 2, ["k", "k"]); P["wave"] = f
-    f = pose("up", eyes="wide"); bang(f); P["alert"] = f
-    f = pose("up", eyes="wide", lift=-2); poof(f); P["surprised"] = f
-    f = pose(eye_shift=-1); question(f); P["puzzled"] = f
-    f = pose(eyes="closed", lift=2, legs=False); zz(f); P["sleepy"] = f
-    f = pose("tap", eye_shift=1); dots(f); P["busy"] = f
-    f = pose(eye_shift=-1); bubbles(f); P["thinking"] = f
-    P["focused"] = pose("back", eyes="none")
-    f = pose("up", eyes="happy"); heart(f); P["love"] = f
-    f = pose(); drop(f); P["sweat"] = f
-    f = pose("up", eyes="happy"); sparkle(f); P["proud"] = f
-    f = pose(); shades(f); P["cool"] = f
-    f = pose(eyes="closed"); rain(f); P["rainy"] = f
-    f = pose("up", eyes="closed", lift=1); shiver(f); P["cold"] = f
-    f = pose("up"); paper(f); P["reading"] = f
-    f = pose("one"); mug(f); P["coffee"] = f
-    f = pose("walk"); speed(f); P["walking"] = f
-    f = pose("tap", eyes="closed"); note(f); P["music"] = f
-    f = pose(); laptop(f); P["typing"] = f
-    f = pose("up", eyes="happy"); confetti(f); P["celebrate"] = f
-    f = pose(eyes="closed", lift=2, legs=False); poof(f); P["boop"] = f
-    f = pose("up", lift=-2); shadow(f); f.art(33, 0, [".kk.", "k##k", "k##k", ".kk."]); P["coin-hop"] = f
-    P["crouch"] = pose(eye_shift=1, lift=2, legs=False)
-    P["peek"] = pose("side")
-    # Added from Jake's references.
-    f = pose("one"); hard_hat(f); wrench(f); P["builder"] = f
-    f = pose("one"); wizard_hat(f); wand(f); P["wizard"] = f
-    f = pose("side", eyes=("open", "closed")); fedora(f); monocle(f); P["detective"] = f
-    f = pose(lift=-2); skateboard(f); P["skate"] = f
-    f = pose("side_up", eyes="happy"); flag(f); P["flag"] = f
-    f = pose("up"); headband(f); dumbbells(f); P["lift"] = f
-    f = pose("short", lift=-1); float_lines(f); P["float"] = f
+    P["calm"] = body()
+    P["blink"] = body(eyes="closed")
+    P["look-left"] = body(look=-1)
+    P["look-right"] = body(look=1)
+    P["wink"] = body(eyes=("open", "closed"))
+    P["happy"] = body(left="up", right="up", eyes="happy")
+    f = body(left="dip", right="up"); waves(f); P["wave"] = f
+    f = body(left="up", right="up"); bang(f); P["alert"] = f
+    f = body(dy=-4, left="up", right="up"); bang(f, 26, -14); poof(f); P["surprised"] = f
+    f = body(look=-1); question(f); P["puzzled"] = f
+    f = body(dy=4, eyes="closed", legs=(0, 0, 0, 0)); zz(f); P["sleepy"] = f
+    f = body(look=1, legs=(4, 4, 4, 2)); dots(f); P["busy"] = f
+    f = body(look=1); bubbles(f); P["thinking"] = f
+    P["focused"] = body(eyes="none")
+    f = body(left="up", right="up", eyes="happy"); heart(f); P["love"] = f
+    f = body(); drop(f); P["sweat"] = f
+    f = body(left="up", right="up", eyes="happy"); sparkle(f); P["proud"] = f
+    f = body(); shades(f); P["cool"] = f
+    f = body(eyes="closed"); rain(f); P["rainy"] = f
+    f = body(eyes="closed"); shiver(f); P["cold"] = f
+    f = body(); paper(f); P["reading"] = f
+    f = body(right="high"); mug(f); P["coffee"] = f
+    f = crawl().mirrored(); speed(f); P["walking"] = f
+    f = body(eyes="closed", legs=(4, 4, 4, 2)); note(f); P["music"] = f
+    # Typing, as traced: three-quarter view, hunched over a laptop with its cable trailing.
+    f = crawl()
+    f.rect(19, 12, 4, 3, S)
+    f.art(20, 10, [".........g", "........gg", ".......gg.", "......gg..", ".....gg...", "gggggg...."])
+    P["typing"] = f.mirrored()
+
+    f = Frame(); f.art(0, -5, JUMP); confetti(f); P["celebrate"] = f
+    f = body(dy=2, eyes="closed", legs=(2, 2, 2, 2)); poof(f); P["boop"] = f
+
+    f = body(dy=-4, left="up", right="up"); shadow(f); coin(f); P["coin-hop"] = f
+    P["crouch"] = body(dy=2, look=1, legs=(2, 2, 2, 2))
+    P["peek"] = body(left="low", right=None)
+
+    f = body(right="high"); hard_hat(f); wrench(f); P["builder"] = f
+    f = body(); wizard_hat(f); P["wizard"] = f
+    f = Frame(); f.art(0, -6, DETECTIVE); P["detective"] = f
+    f = Frame(); f.art(0, -8, SKATE); P["skate"] = f
+
+    # Side on, far arm up with the flag. The near legs are a row shorter.
+    f = body(left="low", right=None, eyes="happy")
+    f.rect(16, -3, 4, 3)
+    f.rect(14, 12, 6, 1)
+    f.art(12, -12, FLAG)
+    f.rect(18, -12, 1, 10, K)
+    P["flag"] = f
+
+    # One arm pressing a dumbbell, the head tipped up toward it, a headband.
+    f = Frame()
+    f.rect(4, 0, 16, 12); f.rect(12, -1, 8, 1)
+    f.rect(0, 6, 4, 4); f.rect(16, -5, 4, 4)
+    for x in LEG_X:
+        f.rect(x, 12, 2, 4)
+    eye(f, 6, 3, "open"); eye(f, 16, 2, "open")
+    f.rect(5, 1, 7, 1, K); f.rect(12, 0, 7, 1, K)
+    f.art(11, -6, WEIGHT); f.art(19, -6, WEIGHT); f.rect(15, -4, 4, 1, K)
+    f.art(-2, 7, WEIGHT)
+    P["lift"] = f
+
+    f = body(dy=-2, arm_w=2, legs=(3, 1, 3, 1)); shadow(f); P["float"] = f
+    extras(P)
     return P
 
 
 ORDER = ["calm", "blink", "look-left", "look-right", "wink", "happy", "wave", "alert", "surprised", "puzzled",
          "sleepy", "busy", "thinking", "focused", "love", "sweat", "proud", "cool", "rainy", "cold",
          "reading", "coffee", "walking", "music", "typing", "celebrate", "boop", "coin-hop", "crouch", "peek",
-         "builder", "wizard", "detective", "skate", "flag", "lift", "float"]
+         "builder", "wizard", "detective", "skate", "flag", "lift", "float",
+         "viking", "captain", "cowboy", "headset", "courier", "umbrella", "snow", "headphones", "crown", "party",
+         "balloon", "chef"]
 
 
 def pack(f):
     out = []
     for y in range(GH):
-        for x in range(0, GW, 4):
-            b = 0
-            for i in range(4):
-                b |= f.px[y][x + i] << (6 - 2 * i)
-            out.append(b)
+        for x in range(0, GW, 2):
+            out.append(f.px[y][x] << 4 | f.px[y][x + 1])
     return out
+
+
+def headroom(f):
+    """Rows used above the figure's box."""
+    for y in range(BY):
+        if any(f.px[y]):
+            return BY - y
+    return 0
+
+
+def preview(P, path, s=8):
+    from PIL import Image, ImageDraw
+    cols = 6
+    cw, ch = GW * s + 16, GH * s + 30
+    img = Image.new("RGB", (cols * cw, ((len(ORDER) + cols - 1) // cols) * ch), (236, 233, 224))
+    d = ImageDraw.Draw(img)
+    col = {B: (200, 104, 72), K: (34, 34, 38), Wh: (255, 255, 255), S: (168, 86, 60), G: (150, 150, 150),
+           L: (232, 180, 110), E: (34, 34, 38)}
+    for n, name in enumerate(ORDER):
+        ox, oy = (n % cols) * cw + 8, (n // cols) * ch + 4
+        for y in range(GH):
+            for x in range(GW):
+                v = P[name].px[y][x]
+                if v:
+                    d.rectangle([ox + x * s, oy + y * s, ox + (x + 1) * s - 1, oy + (y + 1) * s - 1], fill=col[v])
+        d.text((ox, oy + GH * s + 6), name, fill=(34, 34, 38))
+    img.save(path)
 
 
 def main():
@@ -427,30 +639,20 @@ def main():
     a = ap.parse_args()
     P = build()
     assert set(P) == set(ORDER), set(P) ^ set(ORDER)
-    lines = ["// Generated by tools/clawdgen.py. Clawd's poses: 40 x 24 half pixels, 2 bits each",
-             "// (0 none, 1 body, 2 black, 3 white), MSB first, rows top to bottom.",
-             f"static const uint8_t kClawdFrames[{len(ORDER)}][{GW * GH // 4}] = {{"]
+    lines = ["// Generated by tools/clawdgen.py. Clawd's poses: 40 x 32 half pixels, 4 bits each",
+             "// (0 none, 1 body, 2 black, 3 white, 4 shade, 5 gray, 6 light, 7 black on the body),",
+             "// high nibble first, rows top to bottom.",
+             f"static const uint8_t kClawdFrames[{len(ORDER)}][{GW * GH // 2}] = {{"]
     for name in ORDER:
         lines.append(f"    /* {name} */ {{" + ", ".join(str(b) for b in pack(P[name])) + "},")
     lines.append("};")
+    lines.append("// Half-pixel rows each pose uses above the figure (hats, flags, marks).")
+    lines.append(f"static const uint8_t kClawdHeadroom[{len(ORDER)}] = {{"
+                 + ", ".join(str(headroom(P[n])) for n in ORDER) + "};")
     with open(os.path.join(ROOT, "firmware/components/cink_core/src/clawd_data.inc"), "w") as fh:
         fh.write("\n".join(lines) + "\n")
     if a.preview:
-        from PIL import Image, ImageDraw
-        s, cols = 6, 6
-        cw, ch = GW * s // 2 + 20, GH * s // 2 + 34
-        img = Image.new("RGB", (cols * cw, ((len(ORDER) + cols - 1) // cols) * ch), (236, 233, 224))
-        d = ImageDraw.Draw(img)
-        col = {B: (200, 104, 72), K: (34, 34, 38), Wh: (255, 255, 255)}
-        for n, name in enumerate(ORDER):
-            ox, oy = (n % cols) * cw + 10, (n // cols) * ch + 6
-            for y in range(GH):
-                for x in range(GW):
-                    v = P[name].px[y][x]
-                    if v:
-                        d.rectangle([ox + x * s // 2, oy + y * s // 2, ox + (x + 1) * s // 2 - 1, oy + (y + 1) * s // 2 - 1], fill=col[v])
-            d.text((ox, oy + GH * s // 2 + 6), name, fill=(34, 34, 38))
-        img.save(a.preview)
+        preview(P, a.preview)
 
 
 if __name__ == "__main__":

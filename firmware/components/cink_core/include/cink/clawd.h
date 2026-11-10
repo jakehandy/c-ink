@@ -3,10 +3,11 @@
 
 namespace cink {
 
-// Clawd, the Claude Code mascot, as the badge's companion: the 12 x 8 pixel
-// crab with solid black eyes, arms out at the sides and four legs, in poses
-// drawn by tools/clawdgen.py. C-Ink adds a mark or a prop for what is on
-// screen: hats, a newspaper, a flag, a skateboard.
+// Clawd, the Claude Code mascot, as the badge's companion: the pixel crab
+// with solid black eyes, arms out at the sides and four legs. Every pose is
+// drawn by tools/clawdgen.py on one grid, the hats, tools and action poses
+// traced from Anthropic's own Clawd pictures. C-Ink picks the pose for what
+// is on screen.
 enum class Mood : uint8_t {
   Calm,       // default
   Blink,      // eyes shut for a beat
@@ -27,34 +28,50 @@ enum class Mood : uint8_t {
   Proud,      // wins: arms up, sparkle
   Cool,       // sunny weather: sunglasses
   Rainy,      // rain: drops overhead
-  Cold,       // snow: a sneeze
+  Cold,       // snow: eyes shut, shivering
   Reading,    // news: peeking over a newspaper
   Coffee,     // morning brief: a mug with steam
-  Walking,    // commute: side on, mid-step, speed lines
+  Walking,    // commute on foot: three-quarter view, mid-stride, speed lines
   Music,      // releases: a note, tapping along
-  Typing,     // Claude Code is working: a laptop
-  Celebrate,  // a great day: arms up, sparkles either side
-  Boop,       // a delivery arrived: eyes shut, a little poof
+  Typing,     // Claude Code is working, replies to write: hunched over a laptop
+  Celebrate,  // a great week: a jump under confetti
+  Boop,       // a delivery arrived: squatting, eyes shut, a little poof
   CoinHop,    // revenue up: hopping with a shadow below
-  Crouch,     // ready to go: crouched, looking ahead
-  Peek,       // something new: turned halfway, peeking
+  Crouch,     // ready to go: squatting, looking ahead
+  Peek,       // something new: side on
   Builder,    // deploys and databases: hard hat and wrench
-  Wizard,     // Claude Code at work: pointed hat and a wand
+  Wizard,     // Claude Code at work: a starry pointed hat
   Detective,  // pull requests to review: fedora and a magnifier
-  Skate,      // commute: on a skateboard
+  Skate,      // commute: three-quarter view on a skateboard
   Flag,       // shipped / the week's wins: a checkered flag
-  Lift,       // heads-down focus: dumbbells and a headband
-  Float,      // idle: hovering
+  Lift,       // heads-down focus: pressing a dumbbell, headband on
+  Float,      // idle: hovering, legs tucked
+  // C-Ink's own hats and props, on the same body.
+  Viking,     // game night: horned helmet, sword up
+  Captain,    // deploys going out: captain's hat and a spyglass
+  Cowboy,     // issues to wrangle: cowboy hat and a lasso
+  Headset,    // customers waiting: headset, boom mic, a speech bubble
+  Courier,    // a delivery: courier cap, carrying the box
+  Umbrella,   // rain: under an umbrella
+  Snow,       // snow: bobble hat and a scarf
+  Headphones, // releases: headphones on, tapping along
+  Crown,      // a release climbing: a crown
+  Party,      // a birthday or party on the calendar: party hat, arms up
+  Balloon,    // idle: drifting under a balloon
+  Chef,       // lunch on the calendar: chef's hat and a pan
   Count
 };
 
-// Draws Clawd with its top-left at (x, y). cell = one sprite pixel in screen
-// pixels (even values keep the half pixels crisp). The figure is 12*cell wide
-// and 8*cell tall (feet on the bottom edge); marks and props reach up to 4
-// cells above and to either side.
+// Draws Clawd with the figure's top-left at (x, y). cell = one Clawd pixel
+// in screen pixels (even values keep the half pixels crisp). The figure is
+// 12*cell wide and 8*cell tall (feet on the bottom edge); props reach up to
+// 4 cells to either side and 8 above. With body = Ink::Black (a black-only
+// panel) the eyes and anything else drawn on the body come out white.
 void clawd(Canvas& cv, int x, int y, int cell, Mood mood, Ink body);
 constexpr int clawd_w(int cell) { return 12 * cell; }
 constexpr int clawd_h(int cell) { return 8 * cell; }
+// Screen pixels this pose uses above the figure (hats, flags, marks).
+int clawd_headroom(Mood mood, int cell);
 const char* mood_name(Mood m);
 
 }  // namespace cink

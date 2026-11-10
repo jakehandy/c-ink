@@ -220,7 +220,8 @@ static void test_rotation() {
 
 static void test_clawd_moods() {
   // Each mood draws a different Clawd, and Clawd stays in its box: the sprite
-  // plus 4 cells either side for props and 4 above for marks.
+  // plus 4 cells either side for props and 8 above for hats and marks, and
+  // never above the headroom the layout is told to leave.
   const int n = (int)Mood::Count, cell = 6, x0 = 120, y0 = 120;
   uint32_t seen[(int)Mood::Count];
   for (int m = 0; m < n; m++) {
@@ -231,7 +232,8 @@ static void test_clawd_moods() {
       for (int x = 0; x < Canvas::W; x++)
         if (cv.get(x, y) != Ink::White) {
           CHECK(x >= x0 - 4 * cell && x < x0 + clawd_w(cell) + 4 * cell);
-          CHECK(y >= y0 - 4 * cell - 4 && y < y0 + clawd_h(cell));
+          CHECK(y >= y0 - 8 * cell && y < y0 + clawd_h(cell));
+          CHECK(y >= y0 - clawd_headroom((Mood)m, cell));
         }
   }
   for (int i = 0; i < n; i++)

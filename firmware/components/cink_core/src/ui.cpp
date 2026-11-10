@@ -495,6 +495,16 @@ void page_count(Canvas& cv, int n, int cur, int y) {
   eyebrow(cv, W - M - eyebrow_w(buf), y, buf, Ink::Black);
 }
 
+// Whether a title has the word, whatever its case.
+bool has_word(const char* s, const char* w) {
+  for (; *s; s++) {
+    int i = 0;
+    while (w[i] && (s[i] | 32) == w[i]) i++;
+    if (!w[i]) return true;
+  }
+  return false;
+}
+
 // Clawd's pose for what is on screen. Calm cards get one of a few idle
 // looks, picked by the card id so it holds still between refreshes.
 Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st) {
@@ -511,22 +521,29 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
     case Kind::Quest:
       if (is_countdown(*c, st) && dt <= 5 * 60) return Mood::Surprised;
       if (is_countdown(*c, st) && dt <= 15 * 60) return Mood::Busy;
+      if (c->kind == Kind::Quest) return Mood::Viking;
+      if (has_word(c->title, "birthday") || has_word(c->title, "party")) return Mood::Party;
+      if (has_word(c->title, "lunch") || has_word(c->title, "dinner")) return Mood::Chef;
       break;
     case Kind::Commute: return strstr(c->delta, "foot") ? Mood::Walking : Mood::Skate;
     case Kind::Wins: return c->nrows >= 3 ? Mood::Celebrate : Mood::Flag;
-    case Kind::Ship:
+    case Kind::Ship: return Mood::Captain;
+    case Kind::Task: return Mood::Cowboy;
     case Kind::Db:
     case Kind::Cloud: return Mood::Builder;
     case Kind::Review: return Mood::Detective;
-    case Kind::Music: return Mood::Music;
+    case Kind::Music: return c->delta[0] == '+' ? Mood::Crown : Mood::Headphones;
     case Kind::News:
     case Kind::Story: return Mood::Reading;
     case Kind::Focus: return Mood::Lift;
-    case Kind::Parcel: return Mood::Boop;
+    case Kind::Parcel: return Mood::Courier;
     case Kind::Brief: return st.now && local(st.now).hour < 12 ? Mood::Coffee : Mood::Wink;
     case Kind::Claude: {
       for (int i = 0; i < c->nrows; i++)
         if (c->rows[i].tier == 0) return Mood::Wave;
+      // A session still running: Clawd is at the laptop. All finished: the wizard.
+      for (int i = 0; i < c->nrows; i++)
+        if (!strncmp(c->rows[i].detail, "Working", 7)) return Mood::Typing;
       return Mood::Wizard;
     }
     case Kind::Money:
@@ -537,22 +554,28 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
       break;
     case Kind::Weather:
       if (c->wx == Wx::Clear) return Mood::Cool;
-      if (c->wx == Wx::Rain || c->wx == Wx::Storm) return Mood::Rainy;
-      if (c->wx == Wx::Snow) return Mood::Cold;
+      if (c->wx == Wx::Rain) return Mood::Umbrella;
+      if (c->wx == Wx::Storm) return Mood::Rainy;
+      if (c->wx == Wx::Snow) return Mood::Snow;
       break;
     case Kind::Chat:
     case Kind::Teams:
     case Kind::Support:
     case Kind::Mail:
-      for (int i = 0; i < c->nrows; i++)
-        if (c->rows[i].tier == 0) return Mood::Busy;
+      // With several mail accounts the tier names the account, not the urgency.
+      if (!(c->kind == Kind::Mail && c->sec[0][0]))
+        for (int i = 0; i < c->nrows; i++)
+          if (c->rows[i].tier == 0) return Mood::Busy;
+      if (c->kind == Kind::Mail && c->nrows) return Mood::Typing;  // replies to write
+      if (c->kind == Kind::Support) return Mood::Headset;
       break;
     default: break;
   }
-  static const Mood idle[6] = {Mood::Calm, Mood::LookLeft, Mood::LookRight, Mood::Wink, Mood::Peek, Mood::Float};
+  static const Mood idle[7] = {Mood::Calm, Mood::LookLeft, Mood::LookRight, Mood::Wink, Mood::Peek, Mood::Float,
+                               Mood::Balloon};
   uint32_t h = 2166136261u;
   for (const char* p = c->id; *p; p++) h = (h ^ (uint8_t)*p) * 16777619u;
-  return idle[h % 6];
+  return idle[h % 7];
 }
 
 // Clawd standing on a rule at y, at the right margin.
@@ -579,8 +602,10 @@ int up_next(Canvas& cv, const Digest& d, const Ranked& r, int cur, const Status&
       next_row(cv, d.cards[ids[i]], st, top + i * NEXT_ROW_H);
     }
   }
-  // Leave Clawd's height plus his mark above the rule.
-  return rule - clawd_h(CLAWD_CELL) - 4 * CLAWD_CELL - 6;
+  // Leave Clawd's height plus his mark above the rule, more under a tall hat or flag.
+  int above = clawd_headroom(mood, CLAWD_CELL);
+  if (above < 4 * CLAWD_CELL) above = 4 * CLAWD_CELL;
+  return rule - clawd_h(CLAWD_CELL) - above - 6;
 }
 
 // ----------------------------------------------------------- other screens

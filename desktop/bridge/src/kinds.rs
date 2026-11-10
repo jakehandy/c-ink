@@ -41,7 +41,7 @@ pub const KINDS: &[KindInfo] = &[
     KindInfo { key: "weather", name: "Weather", blurb: "Now, today's high and low, and when rain starts, for the place you set.", source: "weather", connectors: &[], default_on: true },
     KindInfo { key: "claude", name: "Claude Code", blurb: "Sessions waiting on you, what you built today, and token use, from Claude Code on this computer.", source: "claudecode", connectors: &[], default_on: true },
     KindInfo { key: "cloud", name: "Cloudflare alerts", blurb: "Cloudflare notifications from the last day: Workers errors, origin and DDoS alerts, certificate expiry.", source: "cloudflare", connectors: &[], default_on: true },
-    KindInfo { key: "parcel", name: "Deliveries", blurb: "Packages arriving today or delayed, from Shop and from Link's order emails.", source: "shop", connectors: &["shop", "gmail", "mail"], default_on: true },
+    KindInfo { key: "parcel", name: "Deliveries", blurb: "Packages arriving today or delayed, from Shop and from order and shipping emails in your inbox.", source: "shop", connectors: &["shop", "gmail", "mail"], default_on: true },
     KindInfo { key: "support", name: "Customer inbox", blurb: "Intercom conversations waiting on you or your team, oldest wait first, with what each customer needs.", source: "intercom", connectors: &["intercom"], default_on: true },
     KindInfo { key: "teams", name: "Teams", blurb: "Teams chats and channel mentions that need you, grouped into now, today and when you can.", source: "m365", connectors: &["microsoft", "teams"], default_on: true },
 ];
@@ -105,7 +105,6 @@ pub const SOURCES: &[SourceInfo] = &[
     SourceInfo { id: "once", category: "business", name: "ONCE", icon: "once", blurb: "The music release platform. How your latest release is doing, and anything stuck in review.", connect: Connect::Connector(&["once"]), also: &["wins"] },
     SourceInfo { id: "gdrive", category: "files", name: "Google Drive", icon: "gdrive", blurb: "Docs waiting on your comments, and the doc to read before each meeting. Add each Google account as its own Drive connector.", connect: Connect::Connector(&["drive"]), also: &[] },
     SourceInfo { id: "shop", category: "shopping", name: "Shop", icon: "shopify", blurb: "Orders and deliveries tracked in the Shop app.", connect: Connect::Connector(&["shop"]), also: &[] },
-    SourceInfo { id: "link", category: "shopping", name: "Link", icon: "link", blurb: "Orders paid with Link. Link has no connector, so C-Ink reads Link's order and shipping emails in Gmail.", connect: Connect::Connector(&["gmail"]), also: &["parcel"] },
     SourceInfo { id: "tavern", category: "life", name: "Tavern", icon: "tavern", blurb: "Your tabletop group's campaign home. Your next session, where the last one ended, and your character.", connect: Connect::Connector(&["tavern"]), also: &[] },
     SourceInfo { id: "weather", category: "life", name: "Weather", icon: "weather", blurb: "Forecast from Open-Meteo for the place you set. No account needed.", connect: Connect::Builtin, also: &[] },
     SourceInfo { id: "news", category: "life", name: "News", icon: "news", blurb: "Claude researches the web once a morning with your prompt.", connect: Connect::Builtin, also: &[] },

@@ -29,7 +29,7 @@ day = {
          "t": "Design review: onboarding v2", "sh": "Design review", "s": "with Priya, Marco and Dee",
          "b": "Priya wants a yes or no on the new pricing step. Last week's notes flagged drop-off at step 3.",
          "m": "Google Meet  ·  30 min"},
-        {"id": "slack:triage", "k": "chat", "p": 66, "t": "Slack", "src": "slack",
+        {"id": "slack:triage", "k": "chat", "p": 66, "t": "7 unread", "sh": "7 unread in Slack", "src": "slack",
          "r": [
              {"l": "Sam Ortiz", "d": "Wants your OK on the launch date by 4 PM", "g": "DM", "tr": 0, "u": True},
              {"l": "#incidents", "d": "Payments latency alert, you are on call", "g": "!", "tr": 0, "u": True},
@@ -46,7 +46,7 @@ day = {
         {"id": "vercel:web", "k": "ship", "p": 62, "u": True, "t": "Production deploy failed", "sh": "Deploy failed",
          "s": "web-app  ·  main  ·  since 2:27 PM",
          "b": "Missing env STRIPE_WEBHOOK_SECRET in checkout/route.ts. The last good deploy is still serving traffic."},
-        {"id": "gmail:replies", "k": "mail", "p": 48, "t": "Inbox", "sh": "4 emails to answer", "src": "gmail",
+        {"id": "gmail:replies", "k": "mail", "p": 48, "t": "4 unread", "sh": "4 unread emails", "src": "gmail",
          "sec": ["WORK", "PERSONAL", "LABEL"],
          "r": [
              {"l": "Alex, Vanta", "d": "Contract redlines, wants a call by Thursday", "g": "3d", "tr": 0},
@@ -134,7 +134,7 @@ day = {
              {"l": "Kestrel", "d": "Wants the annual price before Friday", "g": "3h", "tr": 1},
              {"l": "Two new trials", "d": "Asking how import works", "g": "2", "tr": 2},
          ]},
-        {"id": "teams:triage", "k": "teams", "p": 44, "src": "teams", "t": "Teams", "sh": "Teams: 1 needs you",
+        {"id": "teams:triage", "k": "teams", "p": 44, "src": "teams", "t": "3 unread", "sh": "3 unread in Teams",
          "s": "1 needs you  ·  2 today",
          "r": [
              {"l": "Finance sync", "d": "Ravi needs the Q4 headcount number by 4", "g": "!", "tr": 0},
@@ -146,7 +146,7 @@ day = {
          "r": [
              {"l": "Aesop", "d": "Hand wash refill, arriving today by 8 PM", "tr": 0},
              {"l": "Bellroy", "d": "Tech kit, out for delivery", "tr": 0},
-             {"l": "Keychron", "d": "Delayed, now Thursday (paid with Link)", "g": "!", "tr": 1, "u": True},
+             {"l": "Keychron", "d": "Delayed, now Thursday", "g": "!", "tr": 1, "u": True},
              {"l": "Uniqlo", "d": "In transit, Friday", "tr": 2},
          ]},
     ],

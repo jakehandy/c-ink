@@ -259,13 +259,6 @@ const FLOWS = {
     el("p", { class: "hint" }, "Tavern keeps a tabletop roleplaying group's campaign in one place: dated sessions with everyone's notes, a wiki of people and places, maps with pins, character sheets with live hit points and spell slots, and a combat tracker."),
     connectorFlow(s, ["Open claude.ai connectors and add Tavern.", "Come back and recheck. Game night shows your next session, a line on where the last one left off, and your character's hit points."])),
   shop: (s) => connectorFlow(s, ["Open claude.ai connectors, search for Shop and connect it with the Shop app's sign-in.", "Come back and recheck. The Deliveries screen uses Shop's orders and tracking."]),
-  link: () => {
-    const g = src("gmail");
-    return el("div", { class: "connect-box" },
-      el("p", { class: "hint" }, "Link has no connector yet, so C-Ink reads Link's order and shipping emails from your Gmail instead. Nothing else to set up as long as the inbox Link emails is connected."),
-      el("div", { class: "result" }, el("span", { class: "state" + (g.connected ? " ok" : "") }, g.connected ? "Gmail is connected, so Link orders will show up in Deliveries." : "Connect Gmail first.")),
-      g.connected ? "" : el("div", { class: "actions" }, el("button", { class: "primary", onclick: () => openSheet("gmail") }, "Set up Gmail")));
-  },
   github: (s) => connectorFlow(s, ["Connect GitHub on claude.ai, or just sign in to the gh command line tool on this computer: C-Ink uses it when there is no connector.", "Come back and recheck."]),
   gcal: (s) => {
     const box = connectorFlow(s, ["Connect Google Calendar on claude.ai (one per calendar account).", "Come back and recheck."]);

@@ -20,7 +20,8 @@
    "id": "slack:triage",
    "k": "chat",
    "p": 66,
-   "t": "Slack",
+   "t": "7 unread",
+   "sh": "7 unread in Slack",
    "src": "slack",
    "r": [
     {
@@ -100,8 +101,8 @@
    "id": "gmail:replies",
    "k": "mail",
    "p": 48,
-   "t": "Inbox",
-   "sh": "4 emails to answer",
+   "t": "4 unread",
+   "sh": "4 unread emails",
    "src": "gmail",
    "sec": [
     "WORK",
@@ -522,8 +523,8 @@
    "k": "teams",
    "p": 44,
    "src": "teams",
-   "t": "Teams",
-   "sh": "Teams: 1 needs you",
+   "t": "3 unread",
+   "sh": "3 unread in Teams",
    "s": "1 needs you  ·  2 today",
    "r": [
     {
@@ -571,7 +572,7 @@
     },
     {
      "l": "Keychron",
-     "d": "Delayed, now Thursday (paid with Link)",
+     "d": "Delayed, now Thursday",
      "g": "!",
      "tr": 1,
      "u": true

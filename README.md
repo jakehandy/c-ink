@@ -77,7 +77,7 @@ Every source you connect feeds one or more screens. Each screen has a full view,
 | Cloudflare alerts | Cloudflare (API token) | Notifications from the last day: Workers errors, origin and DDoS alerts, certificates |
 | Database health | Supabase | Tables with row level security off, advisor warnings, paused projects |
 | Revenue | Stripe | Today against a usual day for that weekday, with a sparkline |
-| Deliveries | Shop, Link (via Gmail) | Packages arriving today or delayed |
+| Deliveries | Shop, order emails in Gmail or Outlook | Packages arriving today or delayed |
 | Releases | ONCE | How your latest release is doing this week: streams, stores, anything stuck in review |
 | Game night | Tavern | Your next tabletop session, where the last one left off, and where your character stands |
 | Docs | Google Drive (one connector per account), SharePoint and OneDrive | Docs waiting on your comments, and the one to read before your next meeting |
@@ -112,7 +112,6 @@ C-Ink Settings lists every source in a small Marketplace, grouped by type (calen
 - **claude.ai connectors** (Google Calendar, Gmail, Microsoft 365 for Outlook, Teams and SharePoint, Slack, Intercom, GitHub, Linear, Vercel, Supabase, Stripe, Shop, ONCE, Tavern, Google Drive): connect on claude.ai, then **Recheck**. Add Gmail or Google Drive once per account for multiple accounts.
 - **Built in:** Weather takes a zip code, city or coordinates. Cloudflare takes a read-only API token (Notifications: Read, Account Settings: Read). News takes a sentence describing what you want, for example *"Local news for my zip code, progressive political news, and general news."*
 - **On this computer:** Claude Code is found automatically.
-- **Link** has no connector, so Deliveries reads Link's order and shipping emails from your Gmail.
 
 ## Repo layout
 
@@ -159,4 +158,4 @@ cd firmware && idf.py set-target esp32s3 build
 
 ## Trademarks
 
-Brand names and logos (Google Calendar, Gmail, Google Drive, Microsoft 365, Outlook, Teams, Slack, Intercom, GitHub, Linear, Vercel, Cloudflare, Supabase, Stripe, Shopify, Link, Notion, Spotify, ONCE, Tavern, Claude) belong to their owners. Monochrome marks come from [Simple Icons](https://simpleicons.org) (CC0) or from their owners, and are used only to label where a card's information comes from. C-Ink is not affiliated with or endorsed by any of them, or by ENILINX.
+Brand names and logos (Google Calendar, Gmail, Google Drive, Microsoft 365, Outlook, Teams, Slack, Intercom, GitHub, Linear, Vercel, Cloudflare, Supabase, Stripe, Shopify, Notion, Spotify, ONCE, Tavern, Claude) belong to their owners. Monochrome marks come from [Simple Icons](https://simpleicons.org) (CC0) or from their owners, and are used only to label where a card's information comes from. C-Ink is not affiliated with or endorsed by any of them, or by ENILINX.

@@ -49,16 +49,31 @@
     <!-- CLAUDE -->
     <section id="page-claude" class="page">
       <header><div><h1>Claude</h1>
-        <p class="sub">C-Ink runs your own Claude Code, signed in with your Claude account. Its connectors (Calendar, Slack, GitHub and the rest) are what C-Ink reads from.</p></div></header>
+        <p class="sub">C-Ink runs your own Claude Code on your own Claude plan. Every connector you add on claude.ai (Calendar, Gmail, Slack, GitHub and the rest) shows up here automatically, so there is nothing else to sign in to and no API keys to make.</p></div></header>
       <div class="card" id="claude-card"><div class="spinner"></div></div>
       <div class="card">
         <h3>Model</h3>
-        <p class="hint">Each sync is one Claude Code run on your plan. Sonnet is the sweet spot; Haiku is lighter if you sync often.</p>
+        <p class="hint">The model for the morning plan and check-ins, on your own Claude plan. Sonnet is the sweet spot.</p>
         <div class="seg" id="model-seg">
           <button data-model="haiku">Haiku</button>
           <button data-model="sonnet">Sonnet</button>
           <button data-model="opus">Opus</button>
         </div>
+      </div>
+      <div class="card">
+        <h3>Claude's day</h3>
+        <p class="hint">Each morning Claude plans the day: it reads every connector, researches each meeting (the invite, linked docs, recent threads with the people in it) and writes the screens. Then it checks back in to adjust. Between check-ins your calendars are re-read on every refresh with a small, fast run, so a moved or cancelled meeting shows up within minutes, and weather, Claude Code and Cloudflare update without Claude at all.</p>
+        <div class="row"><label>Check in</label>
+          <select id="smart-every">
+            <option value="30">Every 30 minutes</option>
+            <option value="60">Every hour</option>
+            <option value="120">Every 2 hours</option>
+            <option value="240">Every 4 hours</option>
+            <option value="0">Morning plan only</option>
+          </select></div>
+        <div class="row"><label>Calendar</label>
+          <label class="check"><input type="checkbox" id="quick-cal" /> Keep meeting times current between check-ins</label></div>
+        <p class="hint" id="smart-last"></p>
       </div>
       <div class="card">
         <h3>About you</h3>
@@ -103,15 +118,20 @@
         <h3>Sync</h3>
         <div class="row"><label>Refresh every</label>
           <input type="range" id="refresh" min="5" max="60" step="5" /><span id="refresh-val" class="val"></span></div>
-        <div class="row"><label>Quiet hours</label>
-          <label class="check"><input type="checkbox" id="quiet-on" /> Sleep from</label>
-          <select id="quiet-a"></select><span>to</span><select id="quiet-b"></select></div>
         <div class="row"><label>Color</label>
           <label class="check"><input type="checkbox" id="mono" /> Black and white only (no accent color)</label></div>
         <div class="row"><label>Orientation</label>
           <label class="check"><input type="checkbox" id="flip" /> I wear it the other way up (turn the picture 180°)</label></div>
         <div class="row"><label>Startup</label>
           <label class="check"><input type="checkbox" id="autostart" /> Open C-Ink at login (it lives in the menu bar / tray)</label></div>
+      </div>
+
+      <div class="card">
+        <h3>Night</h3>
+        <p class="hint">During quiet hours the badge shows the good night screen with tomorrow's first meeting, stops syncing and sleeps, and Claude does not run. It wakes up at the end with a fresh morning plan.</p>
+        <div class="row"><label>Quiet hours</label>
+          <label class="check"><input type="checkbox" id="quiet-on" /> Good night from</label>
+          <select id="quiet-a"></select><span>until</span><select id="quiet-b"></select></div>
       </div>
 
       <div class="card">

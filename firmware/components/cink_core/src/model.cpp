@@ -9,11 +9,13 @@ namespace cink {
 static const char* const kKeys[] = {"event", "review", "chat",  "mail",  "task",    "ship", "money",
                                     "music", "quest",  "focus", "brief", "doc",     "other",
                                     "traffic", "db",   "commute", "wins",
-                                    "news",  "weather", "claude", "cloud", "parcel"};
+                                    "news",  "weather", "claude", "cloud", "parcel",
+                                    "support", "teams"};
 static const char* const kLabels[] = {"CALENDAR", "REVIEW", "SLACK", "INBOX", "LINEAR",  "SHIP",  "STRIPE",
-                                      "MUSIC",    "QUEST",  "FOCUS", "BRIEF", "DOCS",    "NOTE",
+                                      "ONCE MUSIC", "TAVERN GAME NIGHT",  "FOCUS", "BRIEF", "DOCS",    "NOTE",
                                       "TRAFFIC",  "DATABASE", "COMMUTE", "THIS WEEK",
-                                      "NEWS",     "WEATHER", "CLAUDE CODE", "CLOUDFLARE", "DELIVERIES"};
+                                      "NEWS",     "WEATHER", "CLAUDE CODE", "CLOUDFLARE", "DELIVERIES",
+                                      "INTERCOM", "TEAMS"};
 static_assert(sizeof kKeys / sizeof kKeys[0] == (size_t)Kind::Count, "kind keys");
 static_assert(sizeof kLabels / sizeof kLabels[0] == (size_t)Kind::Count, "kind labels");
 

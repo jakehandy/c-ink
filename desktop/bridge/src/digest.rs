@@ -188,7 +188,7 @@ pub fn build(raw: &Value, s: &Settings, now: DateTime<Local>) -> Built {
             out.sort_by_key(|r| r["tr"].as_i64().unwrap_or(1));
             if !out.is_empty() {
                 o.insert("r".into(), json!(out));
-            } else if matches!(kind, "chat" | "review" | "mail" | "news" | "cloud" | "parcel" | "db") {
+            } else if matches!(kind, "chat" | "review" | "mail" | "news" | "cloud" | "parcel" | "db" | "support" | "teams") {
                 continue; // a list card with nothing left in it
             }
         }

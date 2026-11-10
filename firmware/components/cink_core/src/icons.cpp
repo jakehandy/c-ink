@@ -165,6 +165,20 @@ void icon(Canvas& c, Kind k, int x, int y, int s, Ink ink) {
       c.line(x, y + P(78), x + P(50), y + s - 1, ink, t);
       c.line(x + s - 1, y + P(78), x + P(50), y + s - 1, ink, t);
       break;
+    case Kind::Support:
+    case Kind::Teams:
+      // A speech bubble; Teams adds a second one behind it.
+      c.round_rect(x, y + P(8), P(80), P(62), P(14), ink, t);
+      c.line(x + P(18), y + P(70), x + P(14), y + P(92), ink, t);
+      c.line(x + P(14), y + P(92), x + P(40), y + P(70), ink, t);
+      if (k == Kind::Teams) {
+        c.hline(x + P(80), y + P(30), P(20), ink, t);
+        c.vline(x + s - t, y + P(30), P(48), ink, t);
+        c.hline(x + P(60), y + P(78) - t, P(40), ink, t);
+      } else {
+        for (int i = 0; i < 3; i++) c.circle_fill(x + P(22) + i * P(18), y + P(39), P(6) > 1 ? P(6) : 1, ink);
+      }
+      break;
     default:
       c.circle_fill(x + s / 2, y + s / 2, s / 4, ink);
       break;
@@ -263,6 +277,11 @@ static const char* kind_brand(Kind k) {
     case Kind::Db: return "supabase";
     case Kind::Claude: return "claude";
     case Kind::Cloud: return "cloudflare";
+    case Kind::Chat: return "slack";
+    case Kind::Music: return "once";
+    case Kind::Quest: return "tavern";
+    case Kind::Support: return "intercom";
+    case Kind::Teams: return "teams";
     default: return nullptr;
   }
 }
@@ -271,7 +290,7 @@ void card_icon(Canvas& c, const Card& card, int x, int y, int s, Ink ink) {
   if (card.kind == Kind::Weather && card.wx != Wx::None) { wx_icon(c, card.wx, x, y, s, ink); return; }
   // "shop" is Shop by Shopify; anything without a mark falls back to the kind's line icon.
   const char* src = card.src[0] ? (strcmp(card.src, "shop") == 0 ? "shopify" : card.src) : kind_brand(card.kind);
-  if (card.kind == Kind::Chat || !brand_icon(c, src, x, y, s, ink)) icon(c, card.kind, x, y, s, ink);
+  if (!brand_icon(c, src, x, y, s, ink)) icon(c, card.kind, x, y, s, ink);
 }
 
 void icon_battery(Canvas& c, int x, int y, int pct, bool charging, Ink ink) {

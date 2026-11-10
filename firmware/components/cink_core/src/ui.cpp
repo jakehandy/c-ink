@@ -403,11 +403,11 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
       if (is_countdown(*c, st) && dt <= 15 * 60) return Mood::Busy;
       break;
     case Kind::Commute: return Mood::Walking;
-    case Kind::Wins: return Mood::Proud;
+    case Kind::Wins: return c->nrows >= 3 ? Mood::Celebrate : Mood::Proud;
     case Kind::Music: return Mood::Music;
     case Kind::News: return Mood::Reading;
     case Kind::Focus: return Mood::Focused;
-    case Kind::Parcel: return Mood::Happy;
+    case Kind::Parcel: return Mood::Boop;
     case Kind::Brief: return st.now && local(st.now).hour < 12 ? Mood::Coffee : Mood::Wink;
     case Kind::Claude: {
       for (int i = 0; i < c->nrows; i++)
@@ -415,6 +415,8 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
       return Mood::Typing;
     }
     case Kind::Money:
+      if (c->delta[0] == '+') return Mood::CoinHop;
+      break;
     case Kind::Traffic:
       if (c->delta[0] == '+') return Mood::Proud;
       break;
@@ -424,6 +426,8 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
       if (c->wx == Wx::Snow) return Mood::Cold;
       break;
     case Kind::Chat:
+    case Kind::Teams:
+    case Kind::Support:
     case Kind::Mail:
     case Kind::Review:
       for (int i = 0; i < c->nrows; i++)
@@ -431,10 +435,10 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
       break;
     default: break;
   }
-  static const Mood idle[4] = {Mood::Calm, Mood::LookLeft, Mood::LookRight, Mood::Wink};
+  static const Mood idle[5] = {Mood::Calm, Mood::LookLeft, Mood::LookRight, Mood::Wink, Mood::Peek};
   uint32_t h = 2166136261u;
   for (const char* p = c->id; *p; p++) h = (h ^ (uint8_t)*p) * 16777619u;
-  return idle[h % 4];
+  return idle[h % 5];
 }
 
 // Clawd standing on a rule at y, at the right margin.

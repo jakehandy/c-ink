@@ -522,7 +522,7 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
     case Kind::News:
     case Kind::Story: return Mood::Reading;
     case Kind::Focus: return Mood::Lift;
-    case Kind::Parcel: return Mood::Boop;
+    case Kind::Parcel: return Mood::Parcel;
     case Kind::Brief: return st.now && local(st.now).hour < 12 ? Mood::Coffee : Mood::Wink;
     case Kind::Claude: {
       for (int i = 0; i < c->nrows; i++)
@@ -579,8 +579,10 @@ int up_next(Canvas& cv, const Digest& d, const Ranked& r, int cur, const Status&
       next_row(cv, d.cards[ids[i]], st, top + i * NEXT_ROW_H);
     }
   }
-  // Leave Clawd's height plus his mark above the rule.
-  return rule - clawd_h(CLAWD_CELL) - 4 * CLAWD_CELL - 6;
+  // Leave Clawd's height plus his mark above the rule, more under a tall hat or flag.
+  int above = clawd_headroom(mood, CLAWD_CELL);
+  if (above < 4 * CLAWD_CELL) above = 4 * CLAWD_CELL;
+  return rule - clawd_h(CLAWD_CELL) - above - 6;
 }
 
 // ----------------------------------------------------------- other screens

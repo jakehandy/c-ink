@@ -91,8 +91,8 @@
    "p": 62,
    "u": true,
    "t": "Production deploy failed",
-   "sh": "web-app deploy failed",
-   "s": "web-app  ·  main  ·  18 min ago",
+   "sh": "Deploy failed",
+   "s": "web-app  ·  main  ·  since 2:27 PM",
    "b": "Missing env STRIPE_WEBHOOK_SECRET in checkout/route.ts. The last good deploy is still serving traffic."
   },
   {

@@ -43,8 +43,8 @@ day = {
              {"l": "c-ink #3", "d": "Your PR: Windows build failing", "g": "CI", "tr": 0, "u": True},
              {"l": "web #88", "d": "Checkout copy, approved by Sam", "g": "1d", "tr": 1},
          ]},
-        {"id": "vercel:web", "k": "ship", "p": 62, "u": True, "t": "Production deploy failed", "sh": "web-app deploy failed",
-         "s": "web-app  ·  main  ·  18 min ago",
+        {"id": "vercel:web", "k": "ship", "p": 62, "u": True, "t": "Production deploy failed", "sh": "Deploy failed",
+         "s": "web-app  ·  main  ·  since 2:27 PM",
          "b": "Missing env STRIPE_WEBHOOK_SECRET in checkout/route.ts. The last good deploy is still serving traffic."},
         {"id": "gmail:replies", "k": "mail", "p": 48, "t": "2 emails waiting on you", "sh": "2 emails to answer",
          "r": [

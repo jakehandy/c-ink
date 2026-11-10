@@ -3,7 +3,7 @@
 
 Icons come from Simple Icons (CC0, https://simpleicons.org): 24x24 single-path
 SVGs. Marks Simple Icons no longer carries (Slack, the Microsoft apps,
-Intercom, from simple-icons 9.21.0) and ones it never had (ONCE, Tavern,
+Intercom, from simple-icons 9.21.0) and ones it never had (ONCE, Tavern, Link,
 supplied by their owner) live in tools/brand-icons and win over --icons. An
 icon drawn with a stroke (fill="none") is rasterized as a stroke. The output
 is committed, so building firmware never needs Python:
@@ -47,6 +47,7 @@ BRANDS = [
     ("intercom", "intercom"),
     ("once", "once"),
     ("tavern", "tavern"),
+    ("link", "link"),
 ]
 SIZES = [18, 20, 24]
 SS = 8  # supersampling

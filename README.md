@@ -159,4 +159,4 @@ cd firmware && idf.py set-target esp32s3 build
 
 ## Trademarks
 
-Brand names and logos (Google Calendar, Gmail, Google Drive, Microsoft 365, Outlook, Teams, Slack, Intercom, GitHub, Linear, Vercel, Cloudflare, Supabase, Stripe, Shopify, Notion, Spotify, ONCE, Tavern, Claude) belong to their owners. Monochrome marks come from [Simple Icons](https://simpleicons.org) (CC0) or from their owners, and are used only to label where a card's information comes from. C-Ink is not affiliated with or endorsed by any of them, or by ENILINX.
+Brand names and logos (Google Calendar, Gmail, Google Drive, Microsoft 365, Outlook, Teams, Slack, Intercom, GitHub, Linear, Vercel, Cloudflare, Supabase, Stripe, Shopify, Link, Notion, Spotify, ONCE, Tavern, Claude) belong to their owners. Monochrome marks come from [Simple Icons](https://simpleicons.org) (CC0) or from their owners, and are used only to label where a card's information comes from. C-Ink is not affiliated with or endorsed by any of them, or by ENILINX.

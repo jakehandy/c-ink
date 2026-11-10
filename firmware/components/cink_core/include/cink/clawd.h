@@ -33,9 +33,9 @@ enum class Mood : uint8_t {
   Coffee,     // morning brief: a mug with steam
   Walking,    // commute on foot: three-quarter view, mid-stride, speed lines
   Music,      // releases: a note, tapping along
-  Typing,     // Claude Code is working: a laptop
+  Typing,     // Claude Code is working, replies to write: hunched over a laptop
   Celebrate,  // a great week: a jump under confetti
-  Parcel,     // a delivery: pushing a box on a line
+  Boop,       // a delivery arrived: squatting, eyes shut, a little poof
   CoinHop,    // revenue up: hopping with a shadow below
   Crouch,     // ready to go: squatting, looking ahead
   Peek,       // something new: side on

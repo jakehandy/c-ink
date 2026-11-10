@@ -522,11 +522,14 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
     case Kind::News:
     case Kind::Story: return Mood::Reading;
     case Kind::Focus: return Mood::Lift;
-    case Kind::Parcel: return Mood::Parcel;
+    case Kind::Parcel: return Mood::Boop;
     case Kind::Brief: return st.now && local(st.now).hour < 12 ? Mood::Coffee : Mood::Wink;
     case Kind::Claude: {
       for (int i = 0; i < c->nrows; i++)
         if (c->rows[i].tier == 0) return Mood::Wave;
+      // A session still running: Clawd is at the laptop. All finished: the wizard.
+      for (int i = 0; i < c->nrows; i++)
+        if (!strncmp(c->rows[i].detail, "Working", 7)) return Mood::Typing;
       return Mood::Wizard;
     }
     case Kind::Money:
@@ -544,8 +547,11 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
     case Kind::Teams:
     case Kind::Support:
     case Kind::Mail:
-      for (int i = 0; i < c->nrows; i++)
-        if (c->rows[i].tier == 0) return Mood::Busy;
+      // With several mail accounts the tier names the account, not the urgency.
+      if (!(c->kind == Kind::Mail && c->sec[0][0]))
+        for (int i = 0; i < c->nrows; i++)
+          if (c->rows[i].tier == 0) return Mood::Busy;
+      if (c->kind == Kind::Mail && c->nrows) return Mood::Typing;  // replies to write
       break;
     default: break;
   }

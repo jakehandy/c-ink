@@ -11,7 +11,7 @@ one grid of half pixels (one Clawd pixel is 2 x 2 of them):
 The standing Clawd, the raised arm, the side view with its lowered arm, the
 happy eyes, the hard hat and wrench, the wizard hat, the fedora and
 magnifier, the skateboard, the checkered flag, the dumbbells, the float, the
-confetti jump and the crawl are traced pixel for pixel from Anthropic's own
+confetti jump, the crawl and the laptop are traced pixel for pixel from Anthropic's own
 Clawd pictures. The other poses
 reuse those same parts and add a small mark.
 
@@ -224,17 +224,6 @@ def mug(f):
     f.art(22, -8, ["k.k.", ".k.k", "k.k."])
     f.art(21, -4, ["kkkkk..", "kwwwkkk", "kwwwk.k", "kwwwkkk", "kkkkk.."])
 
-def laptop(f):
-    f.art(2, 8, [
-        "kkkkkkkkkkkkkkkkkkkk",
-        "kwwwwwwwwwwwwwwwwwwk",
-        "kwwwwwwwkkkkwwwwwwwk",
-        "kwwwwwwwwwwwwwwwwwwk",
-        "kwwwwwwwwwwwwwwwwwwk",
-        "kkkkkkkkkkkkkkkkkkkk",
-        "kkkkkkkkkkkkkkkkkkkk",
-    ])
-
 # Traced: the yellow shell is light, its ribs, badge and band are body colour.
 HARD_HAT = [
     "......oooooo......",
@@ -413,15 +402,14 @@ def build():
     f = body(right="high"); mug(f); P["coffee"] = f
     f = crawl().mirrored(); speed(f); P["walking"] = f
     f = body(eyes="closed", legs=(4, 4, 4, 2)); note(f); P["music"] = f
-    f = body(); laptop(f); P["typing"] = f
-
-    f = Frame(); f.art(0, -5, JUMP); confetti(f); P["celebrate"] = f
-
-    # A delivery: the crawl, pushing a box on a line.
+    # Typing, as traced: three-quarter view, hunched over a laptop with its cable trailing.
     f = crawl()
     f.rect(19, 12, 4, 3, S)
     f.art(20, 10, [".........g", "........gg", ".......gg.", "......gg..", ".....gg...", "gggggg...."])
-    P["parcel"] = f.mirrored()
+    P["typing"] = f.mirrored()
+
+    f = Frame(); f.art(0, -5, JUMP); confetti(f); P["celebrate"] = f
+    f = body(dy=2, eyes="closed", legs=(2, 2, 2, 2)); poof(f); P["boop"] = f
 
     f = body(dy=-4, left="up", right="up"); shadow(f); coin(f); P["coin-hop"] = f
     P["crouch"] = body(dy=2, look=1, legs=(2, 2, 2, 2))
@@ -458,7 +446,7 @@ def build():
 
 ORDER = ["calm", "blink", "look-left", "look-right", "wink", "happy", "wave", "alert", "surprised", "puzzled",
          "sleepy", "busy", "thinking", "focused", "love", "sweat", "proud", "cool", "rainy", "cold",
-         "reading", "coffee", "walking", "music", "typing", "celebrate", "parcel", "coin-hop", "crouch", "peek",
+         "reading", "coffee", "walking", "music", "typing", "celebrate", "boop", "coin-hop", "crouch", "peek",
          "builder", "wizard", "detective", "skate", "flag", "lift", "float"]
 
 

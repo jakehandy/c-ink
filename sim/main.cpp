@@ -90,9 +90,9 @@ int main(int argc, char** argv) {
   if (gallery) {
     // Every Clawd pose, for the docs.
     g_cv.clear();
-    const int cell = 4, cols = 6, cw = Canvas::W / cols, rh = 100;
+    const int cell = 4, cols = 7, cw = Canvas::W / cols, rh = 100;
     for (int m = 0; m < (int)Mood::Count; m++) {
-      int cx = (m % cols) * cw, cy = 8 + (m / cols) * rh;
+      int cx = (m % cols) * cw, cy = 4 + (m / cols) * rh;
       clawd(g_cv, cx + (cw - clawd_w(cell)) / 2, cy + 34, cell, (Mood)m, st.mono ? Ink::Black : Ink::Accent);
       const char* name = mood_name((Mood)m);
       g_cv.text(font_caption, cx + (cw - Canvas::measure(font_caption, name)) / 2, cy + 34 + clawd_h(cell) + 22, name,

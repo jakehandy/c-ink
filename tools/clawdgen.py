@@ -13,7 +13,7 @@ happy eyes, the hard hat and wrench, the wizard hat, the fedora and
 magnifier, the skateboard, the checkered flag, the dumbbells, the float, the
 confetti jump, the crawl and the laptop are traced pixel for pixel from Anthropic's own
 Clawd pictures. The other poses
-reuse those same parts and add a small mark.
+reuse those same parts and add a small mark, or one of C-Ink's own hats.
 
 Frames are 40 x 32 half pixels (8 free either side of the 24 x 16 figure and
 16 above for hats, flags and marks), packed 4 bits a half pixel into
@@ -376,6 +376,151 @@ JUMP = [
 ]
 
 
+# ------------------------------------------------- C-Ink's own hats and props
+# Drawn for C-Ink in the style of the traced ones, on the same body.
+VIKING = [
+    "k..................k",
+    "kk................kk",
+    "kwk....gggggg....kwk",
+    ".kwk.gggggggggg.kwk.",
+    "..kkggggggggggggkk..",
+    "..kkkkkkkkkkkkkkkk..",
+]
+SWORD = [".gg.", ".gg.", ".gg.", ".gg.", ".gg.", ".gg.", ".gg.", "kkkk", ".kk.", ".kk."]
+CAPTAIN = [
+    ".....kkkkkkkk.....",
+    "...kkwwwwwwwwkk...",
+    "..kwwwww##wwwwwk..",
+    "..kwwwww##wwwwwk..",
+    "...kkkkkkkkkkkk...",
+    ".kkkkkkkkkkkkkkkk.",
+]
+SPYGLASS = ["kk......", "kkggg...", "kkgggkkk", "kkgggkkk", "kkggg...", "kk......"]
+COWBOY = [
+    "........oooooooo........",
+    ".......oooooooooo.......",
+    ".......oooooooooo.......",
+    ".......##########.......",
+    "o......oooooooooo......o",
+    "oo....oooooooooooo....oo",
+    ".oooooooooooooooooooooo.",
+]
+LASSO = [".kkkk.", "k....k", "k....k", ".kkkk.", "..k...", "..k...", ".k....", ".k....", "k.....", "k....."]
+BUBBLE = [".kkkkk.", "kwwwwwk", "kwkwkwk", "kwwwwwk", ".kkkkk.", "..k...."]
+CAP = [
+    ".....kkkkkkkkkk.",
+    "....kkkkkkkkkkkk",
+    "....kkkk##kkkkkk",
+    "kkkkkkkkkkkkkkkk",
+]
+BOX = [
+    "kkkkkkkkkkkkkk",
+    "kooooo##oooook",
+    "kooooo##oooook",
+    "kooooooooooook",
+    "kooooooooooook",
+    "kooooooooooook",
+    "kkkkkkkkkkkkkk",
+]
+UMBRELLA = [
+    ".......kkkkkkkk.......",
+    "....kkkkkkkkkkkkkk....",
+    "..kkkkkkkkkkkkkkkkkk..",
+    ".kkkkkkkkkkkkkkkkkkkk.",
+    "kk.kkkkk.kkkk.kkkkk.kk",
+]
+BEANIE = [
+    "......kkkk......",
+    ".....kwwwwk.....",
+    "......kkkk......",
+    "...kkkkkkkkkk...",
+    "..kkkkkkkkkkkk..",
+    ".kkwkkwkkwkkwkk.",
+    "kkkkkkkkkkkkkkkk",
+]
+FLAKE = [".k.", "kkk", ".k."]
+CROWN = [
+    "k.....kk.....k",
+    "kk...kook...kk",
+    "kok.kooook.kok",
+    "kookoooooookok",
+    "ko#ooo##ooo#ok",
+    "kkkkkkkkkkkkkk",
+]
+PARTY_HAT = [
+    ".....kk.....",
+    ".....kk.....",
+    "....####....",
+    "....kkkk....",
+    "...######...",
+    "...kkkkkk...",
+    "..########..",
+    "..kkkkkkkk..",
+    ".##########.",
+    ".kkkkkkkkkk.",
+]
+BALLOON = [".kkkkk.", "k#####k", "k#w###k", "k#####k", "k#####k", ".k###k.", "..kkk..", "...k...",
+           "...k...", "..k....", "..k....", ".k.....", "k......"]
+CHEF = [
+    "..kkkk.kkkk.kkkk..",
+    ".kwwwwkwwwwkwwwwk.",
+    "kwwwwwwwwwwwwwwwwk",
+    "kwwwwwwwwwwwwwwwwk",
+    ".kwwwwwwwwwwwwwwk.",
+    "..kwwwwwwwwwwwwk..",
+    "..kwkwwkwwkwwkwk..",
+    "..kkkkkkkkkkkkkk..",
+]
+PAN = ["kkkkkkkk....", "kggggggkkkkk", ".kkkkkk....."]
+
+
+def extras(P):
+    # Game night: horned helmet, sword up.
+    f = body(right="high"); f.art(2, -6, VIKING); f.art(23, -8, SWORD); P["viking"] = f
+    # Deploys going out: captain's hat and a spyglass.
+    f = body(right="high"); f.art(3, -6, CAPTAIN); f.art(22, -3, SPYGLASS); P["captain"] = f
+    # Issues to wrangle: cowboy hat and a lasso.
+    f = body(right="up"); f.art(0, -7, COWBOY); f.art(23, -12, LASSO); P["cowboy"] = f
+    # Customers waiting: a headset with its boom mic, a speech bubble.
+    f = body()
+    f.rect(6, -2, 12, 1, K); f.rect(4, -1, 2, 1, K); f.rect(18, -1, 2, 1, K)
+    f.rect(2, 0, 2, 5, K); f.rect(20, 0, 2, 5, K)
+    f.art(15, 5, ["....k", "...k.", "kkk.."])
+    f.art(23, -10, BUBBLE)
+    P["headset"] = f
+    # A delivery: courier cap, carrying the box.
+    f = body(); f.art(3, -4, CAP); f.art(5, 5, BOX); P["courier"] = f
+    # Rain: under an umbrella.
+    f = body(right="high"); f.art(6, -9, UMBRELLA); f.rect(21, -4, 1, 6, K)
+    for x, y in ((-3, -7), (0, -3), (-4, 1), (29, -2)):
+        f.art(x, y, [".k", ".k", "k.", "k."])
+    P["umbrella"] = f
+    # Snow: bobble hat and a scarf.
+    f = body(); f.art(4, -7, BEANIE)
+    f.rect(4, 8, 16, 2, K); f.art(14, 10, ["kkk", "kkk", "kkk", "w.w"])
+    for x, y in ((-4, -8), (24, -6), (25, 1), (-4, 0)):
+        f.art(x, y, FLAKE)
+    P["snow"] = f
+    # Releases: headphones on, tapping along.
+    f = body(eyes="happy", legs=(4, 4, 4, 2))
+    f.rect(6, -2, 12, 1, K); f.rect(4, -1, 2, 1, K); f.rect(18, -1, 2, 1, K)
+    for x in (2, 19):
+        f.art(x, 0, ["kkk", "kwk", "kwk", "kwk", "kkk"])
+    note(f)
+    P["headphones"] = f
+    # A release climbing: a crown.
+    f = body(left="up", right="up", eyes="happy"); f.art(5, -6, CROWN); sparkle(f); P["crown"] = f
+    # A birthday or a party on the calendar: party hat, arms up.
+    f = body(left="up", right="up", eyes="happy"); f.art(6, -10, PARTY_HAT)
+    for x, y, rows in ((-5, -6, ["k.", ".k"]), (-2, -10, ["##"]), (22, -11, ["g", "g"]), (26, -7, ["##"]), (27, -12, ["k.", ".k"])):
+        f.art(x, y, rows)
+    P["party"] = f
+    # Idle: drifting off under a balloon.
+    f = body(dy=-2, right="up", legs=(3, 1, 3, 1)); f.art(21, -16, BALLOON); shadow(f); P["balloon"] = f
+    # Lunch: a chef's hat and a pan.
+    f = body(right="high"); f.art(3, -8, CHEF); f.art(20, -1, PAN); P["chef"] = f
+
+
 def build():
     P = {}
     P["calm"] = body()
@@ -441,13 +586,16 @@ def build():
     P["lift"] = f
 
     f = body(dy=-2, arm_w=2, legs=(3, 1, 3, 1)); shadow(f); P["float"] = f
+    extras(P)
     return P
 
 
 ORDER = ["calm", "blink", "look-left", "look-right", "wink", "happy", "wave", "alert", "surprised", "puzzled",
          "sleepy", "busy", "thinking", "focused", "love", "sweat", "proud", "cool", "rainy", "cold",
          "reading", "coffee", "walking", "music", "typing", "celebrate", "boop", "coin-hop", "crouch", "peek",
-         "builder", "wizard", "detective", "skate", "flag", "lift", "float"]
+         "builder", "wizard", "detective", "skate", "flag", "lift", "float",
+         "viking", "captain", "cowboy", "headset", "courier", "umbrella", "snow", "headphones", "crown", "party",
+         "balloon", "chef"]
 
 
 def pack(f):

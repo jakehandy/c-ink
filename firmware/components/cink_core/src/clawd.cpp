@@ -17,7 +17,9 @@ const char* const kNames[(int)Mood::Count] = {
     "calm", "blink", "look-left", "look-right", "wink", "happy", "wave", "alert", "surprised", "puzzled",
     "sleepy", "busy", "thinking", "focused", "love", "sweat", "proud", "cool", "rainy", "cold",
     "reading", "coffee", "walking", "music", "typing", "celebrate", "boop", "coin-hop", "crouch", "peek",
-    "builder", "wizard", "detective", "skate", "flag", "lift", "float"};
+    "builder", "wizard", "detective", "skate", "flag", "lift", "float",
+    "viking", "captain", "cowboy", "headset", "courier", "umbrella", "snow", "headphones", "crown", "party",
+    "balloon", "chef"};
 
 }  // namespace
 

@@ -46,6 +46,19 @@ enum class Mood : uint8_t {
   Flag,       // shipped / the week's wins: a checkered flag
   Lift,       // heads-down focus: pressing a dumbbell, headband on
   Float,      // idle: hovering, legs tucked
+  // C-Ink's own hats and props, on the same body.
+  Viking,     // game night: horned helmet, sword up
+  Captain,    // deploys going out: captain's hat and a spyglass
+  Cowboy,     // issues to wrangle: cowboy hat and a lasso
+  Headset,    // customers waiting: headset, boom mic, a speech bubble
+  Courier,    // a delivery: courier cap, carrying the box
+  Umbrella,   // rain: under an umbrella
+  Snow,       // snow: bobble hat and a scarf
+  Headphones, // releases: headphones on, tapping along
+  Crown,      // a release climbing: a crown
+  Party,      // a birthday or party on the calendar: party hat, arms up
+  Balloon,    // idle: drifting under a balloon
+  Chef,       // lunch on the calendar: chef's hat and a pan
   Count
 };
 

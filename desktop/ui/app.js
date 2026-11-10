@@ -169,6 +169,12 @@ $$("#model-seg button").forEach((b) =>
   })
 );
 $("#about").oninput = (e) => { settings.about = e.target.value; save(); };
+$("#commute-from").oninput = (e) => { settings.commute_from = e.target.value; save(); };
+$("#commute-mode").onchange = (e) => { settings.commute_mode = e.target.value; save(); };
+$("#commute-buffer").oninput = (e) => {
+  const n = parseInt(e.target.value, 10);
+  if (n >= 0 && n <= 60) { settings.commute_buffer_min = n; save(); }
+};
 
 // ---------------------------------------------------------------- screens
 function renderScreens() {
@@ -212,6 +218,7 @@ function renderDeviceSettings() {
   $("#quiet-b").value = qb;
   $("#quiet-a").disabled = $("#quiet-b").disabled = !settings.quiet;
   $("#mono").checked = settings.mono;
+  $("#flip").checked = settings.flip;
   const devs = $("#devices");
   devs.replaceChildren(
     ...(settings.devices.length
@@ -233,6 +240,7 @@ $("#refresh").oninput = (e) => { settings.refresh_min = +e.target.value; $("#ref
 $("#quiet-on").onchange = (e) => { settings.quiet = e.target.checked ? [+$("#quiet-a").value, +$("#quiet-b").value] : null; renderDeviceSettings(); save(); };
 $("#quiet-a").onchange = $("#quiet-b").onchange = () => { settings.quiet = [+$("#quiet-a").value, +$("#quiet-b").value]; save(); };
 $("#mono").onchange = (e) => { settings.mono = e.target.checked; save(); };
+$("#flip").onchange = (e) => { settings.flip = e.target.checked; save(); };
 $("#autostart").onchange = async (e) => {
   try { await invoke("set_autostart", { on: e.target.checked }); } catch (err) { e.target.checked = !e.target.checked; alert(err); }
 };
@@ -285,6 +293,77 @@ $("#update-dev").onclick = (e) =>
       note("#setup-msg", String(err), false);
     }
   });
+// ---- hardware bring-up
+function hwProfile() {
+  const t = $("#hw-profile").value.trim();
+  if (!t) return { panel: { type: "none" } };
+  return JSON.parse(t); // throws with a readable message on bad JSON
+}
+function hwShow(p) { $("#hw-profile").value = JSON.stringify(p, null, 1); }
+$("#hw-load").onclick = () => $("#hw-file").click();
+$("#hw-file").onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const p = JSON.parse(await f.text());
+    hwShow(p.profile || p); // accepts probe.py's full report or a bare profile
+    note("#hw-msg", "Loaded " + f.name + ". Check it, then Send to TICKEY.", true);
+  } catch (err) { note("#hw-msg", "That file is not a profile: " + err, false); }
+  e.target.value = "";
+};
+$("#hw-read").onclick = (e) =>
+  busy(e.target, "Reading...", async () => {
+    try {
+      const r = await invoke("device_board_get", { port: port() });
+      note("#hw-msg", "Running the " + r.backend + " display backend. Pins: " + JSON.stringify(r.profile), true);
+    } catch (err) { note("#hw-msg", String(err), false); }
+  });
+$("#hw-learn").onclick = (e) =>
+  busy(e.target, "Press Up, Down, Back...", async () => {
+    const activeLow = !$("#hw-active-high").checked;
+    note("#hw-msg", "Press Up, then Down, then Back on the TICKEY, once each, within 15 seconds.", true);
+    try {
+      const r = await invoke("device_learn", { port: port(), secs: 15, activeLow });
+      if (r.up == null) throw new Error("No button presses seen. Try again, or tick 'Buttons pull the line high'.");
+      let p;
+      try { p = hwProfile(); } catch (_) { p = { panel: { type: "none" } }; }
+      p.buttons = { up: r.up, down: r.down ?? -1, back: r.back ?? -1, active_low: activeLow };
+      hwShow(p);
+      const missing = ["down", "back"].filter((k) => r[k] == null);
+      const found = "Up is GPIO " + r.up + (r.down != null ? ", Down " + r.down : "") + (r.back != null ? ", Back " + r.back : "");
+      note("#hw-msg", found + (missing.length ? ". Did not catch " + missing.join(" and ") + "; run it again." : ". Send to TICKEY to keep them."), !missing.length);
+    } catch (err) { note("#hw-msg", String(err), false); }
+  });
+$("#hw-send").onclick = (e) =>
+  busy(e.target, "Sending...", async () => {
+    try {
+      const profile = hwProfile();
+      const r = await invoke("device_board_send", { port: port(), profile });
+      settings.board_profile = profile;
+      note("#hw-msg", "Saved on the TICKEY. Display backend: " + r.backend + ".", true);
+    } catch (err) { note("#hw-msg", String(err), false); }
+  });
+$("#hw-test").onclick = (e) =>
+  busy(e.target, "Refreshing...", async () => {
+    try {
+      const r = await invoke("device_panel_test", { port: port() });
+      let msg;
+      if (r.backend === "headless") msg = "No panel profile is active, so nothing was drawn. Send a profile first.";
+      else if (!r.busy_seen) msg = "The panel never signalled BUSY. Check the busy pin and its polarity, then the init script.";
+      else if (r.timeouts) msg = "The panel stayed BUSY until the timeout (" + r.busy_ms + " ms). The refresh command or power-on step is likely wrong.";
+      else msg = "The panel took the frame: BUSY for " + (r.busy_ms / 1000).toFixed(1) + " s, " + (r.total_ms / 1000).toFixed(1) + " s in all. Check the screen.";
+      note("#hw-msg", msg, r.busy_seen && !r.timeouts);
+    } catch (err) { note("#hw-msg", String(err), false); }
+  });
+$("#hw-reset").onclick = (e) =>
+  busy(e.target, "Forgetting...", async () => {
+    if (!confirm("Forget the board profile on this TICKEY? It goes back to the built-in pins and the headless display.")) return;
+    try {
+      await invoke("device_board_reset", { port: port() });
+      note("#hw-msg", "Profile removed from the TICKEY.", true);
+    } catch (err) { note("#hw-msg", String(err), false); }
+  });
+
 $$("[data-press]").forEach((b) => (b.onclick = () => invoke("device_press", { port: port(), button: b.dataset.press }).catch((e) => alert(e))));
 $("#grab").onclick = (e) =>
   busy(e.target, "Reading...", async () => {
@@ -356,6 +435,10 @@ async function boot() {
   await refreshState();
   $$("#model-seg button").forEach((x) => x.classList.toggle("on", x.dataset.model === settings.model));
   $("#about").value = settings.about;
+  $("#commute-from").value = settings.commute_from || "";
+  $("#commute-mode").value = settings.commute_mode || "drive";
+  $("#commute-buffer").value = settings.commute_buffer_min ?? 5;
+  if (settings.board_profile) hwShow(settings.board_profile);
   $("#instructions").value = settings.instructions;
   chips("#private", "private_terms", "Add a name or topic, press Enter");
   chips("#vips", "vips", "Add a person, press Enter");

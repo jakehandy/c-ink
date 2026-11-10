@@ -1,6 +1,7 @@
 //! USB-C link to a TICKEY running C-Ink (newline JSON, replies prefixed
 //! "@cink "). Used for first-time setup, pushing a digest without Wi-Fi,
-//! remote button presses and grabbing the device's frame buffer.
+//! remote button presses, grabbing the device's frame buffer, and the
+//! hardware bring-up ops (board profile, panel test, button learning).
 
 use std::io::{BufRead, BufReader, Write};
 use std::time::{Duration, Instant};
@@ -144,7 +145,7 @@ impl Link {
     /// The frame the device last drew, as (black, accent) planes.
     pub fn frame(&mut self) -> Result<(Vec<u8>, Vec<u8>)> {
         self.send(&json!({"op": "frame"}))?;
-        let plane = 720 / 8 * 480;
+        let plane = crate::preview::W / 8 * crate::preview::H;
         let mut black = vec![0u8; plane];
         let mut accent = vec![0u8; plane];
         let start = Instant::now();
@@ -172,5 +173,113 @@ impl Link {
             }
         }
         bail!("timed out reading the frame")
+    }
+
+    /// Sends a board profile (pins, panel type and command scripts; see
+    /// tools/tickey-probe). The device saves it and restarts its panel.
+    pub fn board(&mut self, profile: &Value) -> Result<()> {
+        let line = serde_json::to_string(profile)?;
+        if line.len() > 4400 {
+            bail!("this profile is {} bytes; the device takes up to about 4.4 KB", line.len());
+        }
+        self.call(json!({"op": "board", "profile": profile}), Duration::from_secs(5)).map(|_| ())
+    }
+
+    /// The device's active board profile (pins and script sizes) and which
+    /// panel backend it is running.
+    pub fn board_get(&mut self) -> Result<Value> {
+        self.call(json!({"op": "board_get"}), Duration::from_secs(3))
+    }
+
+    pub fn board_reset(&mut self) -> Result<()> {
+        self.call(json!({"op": "board_reset"}), Duration::from_secs(5)).map(|_| ())
+    }
+
+    /// Full refresh of the current screen. The answer says how long the panel
+    /// held BUSY: a few seconds means the controller took the frame, zero
+    /// means it never answered (wrong pins or init script).
+    pub fn panel_test(&mut self) -> Result<Value> {
+        self.call(json!({"op": "panel_test"}), Duration::from_secs(90))
+    }
+
+    /// Watches every safe GPIO for `secs` seconds while the user presses the
+    /// buttons and returns the level changes the device saw.
+    pub fn learn(&mut self, secs: u32, active_low: bool) -> Result<Vec<PinEvent>> {
+        let start = self.call(json!({"op": "learn", "secs": secs, "active_low": active_low}), Duration::from_secs(3))?;
+        if start["watching"].as_u64().unwrap_or(0) == 0 {
+            bail!("the device had no pins it could watch");
+        }
+        let deadline = Instant::now() + Duration::from_secs(secs as u64 + 5);
+        let mut out = vec![];
+        let mut line = String::new();
+        while Instant::now() < deadline {
+            line.clear();
+            if self.reader.read_line(&mut line).unwrap_or(0) == 0 {
+                continue;
+            }
+            let Some(rest) = line.trim().strip_prefix("@cink ") else { continue };
+            let Ok(v) = serde_json::from_str::<Value>(rest) else { continue };
+            match v["op"].as_str() {
+                Some("learn_end") => return Ok(out),
+                Some("pin") => out.push(PinEvent {
+                    gpio: v["gpio"].as_u64().unwrap_or(0) as u8,
+                    level: v["level"].as_u64().unwrap_or(0) as u8,
+                    t_ms: v["t"].as_u64().unwrap_or(0),
+                }),
+                _ => {}
+            }
+        }
+        bail!("the device stopped answering while learning buttons")
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, PartialEq)]
+pub struct PinEvent {
+    pub gpio: u8,
+    pub level: u8,
+    pub t_ms: u64,
+}
+
+/// Turns a learning session where the user pressed Up, Down and Back once
+/// each, in that order, into pin numbers. A press is a pin going to the
+/// pressed level; pins that chatter (a clock, a floating line) are ignored.
+pub fn assign_buttons(events: &[PinEvent], active_low: bool) -> [Option<u8>; 3] {
+    let pressed = if active_low { 0 } else { 1 };
+    let mut count = std::collections::HashMap::<u8, usize>::new();
+    for e in events {
+        *count.entry(e.gpio).or_default() += 1;
+    }
+    let mut order: Vec<u8> = vec![];
+    for e in events {
+        // One press and release is 2 changes; allow a little bounce.
+        if e.level == pressed && count[&e.gpio] <= 8 && !order.contains(&e.gpio) {
+            order.push(e.gpio);
+        }
+    }
+    [order.first().copied(), order.get(1).copied(), order.get(2).copied()]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ev(gpio: u8, level: u8, t_ms: u64) -> PinEvent {
+        PinEvent { gpio, level, t_ms }
+    }
+
+    #[test]
+    fn learns_three_buttons_in_order() {
+        let mut e = vec![];
+        // A noisy pin toggling the whole time.
+        for i in 0..20 {
+            e.push(ev(4, (i % 2) as u8, i * 500));
+        }
+        e.extend([ev(14, 0, 1000), ev(14, 1, 1100), ev(14, 0, 1110), ev(14, 1, 1120)]); // Up, with bounce
+        e.extend([ev(0, 0, 3000), ev(0, 1, 3150)]); // Down
+        e.extend([ev(21, 0, 5000), ev(21, 1, 5200)]); // Back
+        e.sort_by_key(|x| x.t_ms);
+        assert_eq!(assign_buttons(&e, true), [Some(14), Some(0), Some(21)]);
+        // Active-high wiring: the release is what we saw first.
+        assert_eq!(assign_buttons(&[ev(5, 1, 0), ev(5, 0, 90)], false), [Some(5), None, None]);
     }
 }

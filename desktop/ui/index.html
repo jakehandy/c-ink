@@ -30,7 +30,7 @@
       </header>
       <div class="device-wrap">
         <button class="arrow" id="prev" title="Previous card">&#8249;</button>
-        <div class="bezel"><img id="frame" alt="What your TICKEY is showing" width="720" height="480" /></div>
+        <div class="bezel"><img id="frame" alt="What your TICKEY is showing" width="480" height="720" /></div>
         <button class="arrow" id="next" title="Next card">&#8250;</button>
       </div>
       <div class="frame-bar">
@@ -65,6 +65,20 @@
         <p class="hint">A line or two that helps Claude judge what matters, like your role and what you are focused on this month.</p>
         <textarea id="about" rows="3" placeholder="I run product at a 20-person startup. This month is all about the launch."></textarea>
       </div>
+      <div class="card">
+        <h3>Commute</h3>
+        <p class="hint">For the Commute screen: where you usually start your day and how you get around. Claude estimates when to leave from each meeting's location. A neighborhood is enough. It is only sent to Claude, with the digest prompt.</p>
+        <input id="commute-from" type="text" placeholder="Home in Oakland, near Lake Merritt" />
+        <div class="row">
+          <select id="commute-mode">
+            <option value="drive">Drive</option>
+            <option value="transit">Transit</option>
+            <option value="walk">Walk</option>
+            <option value="bike">Bike</option>
+          </select>
+          <label>Buffer <input id="commute-buffer" type="number" min="0" max="60" step="5" style="width:4.5em" /> min</label>
+        </div>
+      </div>
     </section>
 
     <!-- SCREENS -->
@@ -90,6 +104,8 @@
           <select id="quiet-a"></select><span>to</span><select id="quiet-b"></select></div>
         <div class="row"><label>Color</label>
           <label class="check"><input type="checkbox" id="mono" /> Black and white only (no accent color)</label></div>
+        <div class="row"><label>Orientation</label>
+          <label class="check"><input type="checkbox" id="flip" /> I wear it the other way up (turn the picture 180°)</label></div>
         <div class="row"><label>Startup</label>
           <label class="check"><input type="checkbox" id="autostart" /> Open C-Ink at login (it lives in the menu bar / tray)</label></div>
       </div>
@@ -123,6 +139,25 @@
           <button id="grab">Show its screen</button>
         </div>
         <img id="grabbed" hidden class="grabbed" alt="Frame read back from the device" />
+      </div>
+
+      <div class="card">
+        <h3>Hardware</h3>
+        <p class="hint">Until ENILINX publishes the TICKEY's pinout and panel driver, C-Ink learns them. Run <code>tools/tickey-probe</code> on the stock firmware to get a board profile, load it here and send it. Learn buttons finds the three buttons by watching the pins while you press them.</p>
+        <div class="row"><label>Profile</label>
+          <button id="hw-load" class="ghost">Load file...</button>
+          <input type="file" id="hw-file" accept=".json,application/json" hidden />
+          <button id="hw-read" class="ghost">Read from TICKEY</button></div>
+        <textarea id="hw-profile" rows="8" spellcheck="false" placeholder='{"buttons": {...}, "panel": {"type": "spi", ...}}'></textarea>
+        <div class="row"><label>Buttons</label>
+          <button id="hw-learn">Learn buttons</button>
+          <label class="check"><input type="checkbox" id="hw-active-high" /> Buttons pull the line high</label></div>
+        <div class="actions">
+          <button class="primary" id="hw-send">Send to TICKEY</button>
+          <button id="hw-test">Test panel</button>
+          <button id="hw-reset" class="ghost">Forget profile</button>
+        </div>
+        <div class="note" id="hw-msg" hidden></div>
       </div>
     </section>
 

@@ -28,6 +28,18 @@ Ink Canvas::get(int x, int y) const {
   return (black[i] & m) ? Ink::Black : Ink::White;
 }
 
+uint8_t Canvas::native_byte(const uint8_t* plane, int ny, int bx, int rotation) {
+  uint8_t out = 0;
+  for (int bit = 0; bit < 8; bit++) {
+    int nx = bx * 8 + bit;
+    int lx, ly;
+    if (rotation) { lx = NATIVE_H - 1 - ny; ly = nx; }
+    else { lx = ny; ly = NATIVE_W - 1 - nx; }
+    if (plane[ly * STRIDE + (lx >> 3)] & (0x80 >> (lx & 7))) out |= 0x80 >> bit;
+  }
+  return out;
+}
+
 bool Canvas::has_accent() const {
   for (int i = 0; i < PLANE; i++) if (accent[i]) return true;
   return false;

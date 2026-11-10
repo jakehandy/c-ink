@@ -6,7 +6,7 @@
 #include "esp_mac.h"
 #include "nvs.h"
 
-static const uint32_t kVersion = 1;
+static const uint32_t kVersion = 2;  // 2: rotation
 
 void config_defaults(Config& c) {
   memset(&c, 0, sizeof c);

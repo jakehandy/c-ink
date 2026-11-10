@@ -3,7 +3,7 @@
 # static library for the simulator, tests and the desktop preview.
 set(CINK_CORE_SRCS
   src/canvas.cpp src/font.cpp src/icons.cpp src/json.cpp src/model.cpp
-  src/rank.cpp src/timefmt.cpp src/ui.cpp)
+  src/rank.cpp src/timefmt.cpp src/ui.cpp src/clawd.cpp)
 
 if(ESP_PLATFORM)
   # capi.cpp holds its own static frame + digest for host callers; the

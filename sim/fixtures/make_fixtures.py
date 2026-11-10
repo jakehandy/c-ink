@@ -70,6 +70,31 @@ day = {
          "b": "Your bard is at 34/41 HP with 2 spell slots left. The party left the archivist's key with the harbor guard."},
         {"id": "cal:standup", "k": "event", "p": 30, "at": at(1, 9, 30), "en": at(1, 9, 45), "t": "Standup",
          "s": "Daily  ·  Zoom"},
+        {"id": "vercel:traffic", "k": "traffic", "p": 34, "t": "Launch post is pulling people in", "sh": "Traffic up",
+         "big": "8,312", "dl": "+64% vs a usual Tuesday", "s": "Top page: /blog/c-ink  ·  41% from Hacker News",
+         "sp": [5, 6, 6, 8, 9, 12, 18, 30, 44, 52, 57, 61, 66, 70, 74, 79, 83, 86]},
+        {"id": "supabase:advisors", "k": "db", "p": 52, "t": "Supabase: 2 tables open to the public",
+         "sh": "2 tables exposed",
+         "r": [
+             {"l": "public.invites", "d": "Row level security is off", "g": "RLS", "tr": 0, "u": True},
+             {"l": "public.events", "d": "Row level security is off", "g": "RLS", "tr": 0, "u": True},
+             {"l": "orders_user_idx", "d": "Unused index, 48 MB", "g": "IDX", "tr": 2},
+         ]},
+        {"id": "cal:vanta-drinks", "k": "event", "p": 55, "at": at(0, 18, 0), "en": at(0, 19, 30),
+         "t": "Drinks with the Vanta team", "sh": "Vanta drinks", "s": "with Alex and Mira",
+         "b": "Alex still wants the redlines settled. Good moment to agree on a Thursday call.",
+         "m": "Zuni Café  ·  1658 Market St"},
+        {"id": "commute:vanta-drinks", "k": "commute", "p": 55, "at": at(0, 17, 30), "st": at(0, 16, 45),
+         "en": at(0, 18, 0), "t": "Drive to Zuni Café", "sh": "Leave 5:30 for Zuni",
+         "s": "About 25 min by car from the office",
+         "b": "For drinks with the Vanta team at 6:00 PM. Street parking on Market is tight after 5; the Rose St garage is a block away.",
+         "m": "1658 Market St, San Francisco"},
+        {"id": "wins:week", "k": "wins", "p": 26, "t": "A good week so far", "sh": "Week: 14 wins",
+         "r": [
+             {"l": "9 PRs merged", "d": "Rate limiter, checkout copy, Windows CI and 6 more", "g": "9", "tr": 1},
+             {"l": "4 Linear issues done", "d": "ENG-224 offline sync shipped to beta", "g": "4", "tr": 1},
+             {"l": "“Low Tide” went live", "d": "On 6 stores via ONCE", "g": "1", "tr": 1},
+         ]},
     ],
 }
 
@@ -78,7 +103,12 @@ empty = {"v": 1, "gen": t(minutes=-1), "hz": t(hours=12),
          "cards": [{"id": "cal:standup", "k": "event", "p": 30, "at": at(1, 9, 30), "t": "Standup",
                     "st": at(1, 6, 0)}]}
 
-for name, doc in (("day", day), ("empty", empty)):
+# A quiet Friday afternoon: wins up top, nothing urgent.
+friday = {"v": 1, "gen": t(minutes=-3), "hz": t(hours=12), "hl": "Fourteen wins this week. Nothing on fire. Go outside.",
+          "cards": [c for c in day["cards"] if c["k"] in ("wins", "traffic", "music", "quest")]}
+friday["cards"] = [dict(c, p=90) if c["k"] == "wins" else c for c in friday["cards"]]
+
+for name, doc in (("day", day), ("empty", empty), ("friday", friday)):
     with open(os.path.join(HERE, name + ".json"), "w") as f:
         json.dump(doc, f, indent=1, ensure_ascii=False)
 print("now =", int(NOW.timestamp()))

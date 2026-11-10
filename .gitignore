@@ -11,3 +11,4 @@ node_modules/
 relay/.wrangler/
 .DS_Store
 *.swp
+__pycache__/

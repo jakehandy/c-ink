@@ -5,8 +5,8 @@ use std::os::raw::{c_char, c_int};
 use anyhow::{bail, Result};
 use parking_lot::Mutex;
 
-pub const W: usize = 720;
-pub const H: usize = 480;
+pub const W: usize = 480;
+pub const H: usize = 720;
 const PLANE: usize = W / 8 * H;
 
 #[repr(C)]
@@ -55,7 +55,7 @@ pub fn next_change(json: &[u8], now: i64, disabled: u32) -> i64 {
 /// PNG of a frame. `paper` approximates the panel's colors instead of pure RGB.
 pub fn png(f: &Frame, paper: bool) -> Vec<u8> {
     let pal: [[u8; 3]; 3] =
-        if paper { [[236, 233, 224], [34, 34, 38], [178, 52, 44]] } else { [[255, 255, 255], [0, 0, 0], [214, 40, 40]] };
+        if paper { [[236, 233, 224], [34, 34, 38], [200, 104, 72]] } else { [[255, 255, 255], [0, 0, 0], [217, 119, 87]] };
     let mut px = Vec::with_capacity(W * H * 3);
     for y in 0..H {
         for x in 0..W {

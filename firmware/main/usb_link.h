@@ -27,9 +27,13 @@ enum class UsbEvent : uint8_t {
   PressBack,
   ShowInfo,
   Reset,          // factory reset done; reboot
+  BoardChanged,   // a new board profile is saved; re-init buttons and panel
+  PanelTest,      // redraw with a full refresh, then call usb_panel_report()
 };
 
 // `black`/`accent` are the app's frame planes, read back by the "frame" op
 // (the panel backends keep no copy).
 void usb_init(const uint8_t* black, const uint8_t* accent);
 UsbEvent usb_poll(Config& cfg, const UsbStatus& st);
+// Answers a "panel_test" once the app has redrawn the panel.
+void usb_panel_report();

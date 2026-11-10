@@ -43,4 +43,4 @@ boot ─▶ load config (NVS) ─▶ open cached blob (flash) ─▶ button wake
 
 ## Rendering
 
-`cink_core` is plain C++17 with no allocation: a 720x480 canvas with a black plane and an accent plane (86 KB), Inter rasterized to 1-bit at ten sizes with kerning (quarter-pixel advances), and procedural line icons. The same code runs on the ESP32-S3, in the simulator, and inside the desktop app (via the `cc` crate), so the preview in C-Ink Settings is the exact frame the device will draw.
+`cink_core` is plain C++17 with no allocation: a portrait 480x720 canvas with a black plane and an accent plane (86 KB), rotated to the panel's native 720x480 scan order as it is sent, Inter rasterized to 1-bit at ten sizes with kerning (quarter-pixel advances), and procedural line icons. The same code runs on the ESP32-S3, in the simulator, and inside the desktop app (via the `cc` crate), so the preview in C-Ink Settings is the exact frame the device will draw.

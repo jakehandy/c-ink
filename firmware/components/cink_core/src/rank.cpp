@@ -5,6 +5,9 @@ namespace cink {
 static const int64_t MIN = 60, HOUR = 3600;
 
 static int64_t effective_end(const Digest& d, const Card& c) {
+  // A commute card is about leaving, so it goes 10 minutes after leave-by
+  // even though its "end" (the meeting start) is later.
+  if (c.kind == Kind::Commute && c.at) return c.end && c.end < c.at + 10 * MIN ? c.end : c.at + 10 * MIN;
   if (c.end) return c.end;
   if (c.at) return c.at + 15 * MIN;  // an event with no end fades 15 min after start
   return d.horizon;
@@ -19,7 +22,7 @@ int score_card(const Digest& d, const Card& c, int64_t now) {
   int s = c.priority;
   if (c.at) {
     int64_t dt = c.at - now;
-    if (dt <= 0) s += 28;            // happening now
+    if (dt <= 0) s += c.kind == Kind::Commute ? 60 : 28;  // happening now (or: you should be on your way)
     else if (dt <= 5 * MIN) s += 60;
     else if (dt <= 15 * MIN) s += 45;
     else if (dt <= 30 * MIN) s += 30;

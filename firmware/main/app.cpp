@@ -17,6 +17,7 @@
 #include "cink/rank.h"
 #include "cink/timefmt.h"
 #include "cink/ui.h"
+#include "cink_hal/board.h"
 #include "cink_hal/hal.h"
 #include "config.h"
 #include "crypto.h"
@@ -88,6 +89,7 @@ static void load_digest() {
     next.quiet_start = d.quiet_start;
     next.quiet_end = d.quiet_end;
     next.mono = d.mono;
+    next.rotation = d.rotation;
     if (d.tz[0]) strncpy(next.tz, d.tz, sizeof next.tz - 1);
     if (memcmp(&next, &g_cfg, sizeof next) != 0) {
       ESP_LOGI(TAG, "applying settings from digest");
@@ -152,7 +154,7 @@ static int show(View v, bool force_full = false) {
   hal::Refresh mode = (force_full || accent_changed || R.fast_since_full >= CONFIG_CINK_FULL_REFRESH_EVERY)
                           ? hal::Refresh::Full
                           : hal::Refresh::Fast;
-  hal::display_present(g_cv.black, g_cv.accent, mode);
+  hal::display_present(g_cv.black, g_cv.accent, mode, g_cfg.rotation);
   R.shown_hash = h;
   R.shown_accent = ah;
   R.fast_since_full = mode == hal::Refresh::Full ? 0 : R.fast_since_full + 1;
@@ -205,12 +207,20 @@ static void press(uint8_t button, bool long_press) {
   show(g_view);
 }
 
+// With the badge flipped 180 degrees the physical Up button sits at the bottom,
+// so it pages down. USB presses from C-Ink Settings are logical and skip this.
+static uint8_t oriented(uint8_t b) {
+  const uint8_t ud = hal::BTN_UP | hal::BTN_DOWN;
+  if (g_cfg.rotation && (b & ud) && (b & ud) != ud) b ^= ud;
+  return b;
+}
+
 // Polls the buttons; returns true if something was pressed.
 static bool poll_buttons() {
   static uint8_t held;
   static int64_t since;
   static bool fired;
-  uint8_t b = hal::buttons_read();
+  uint8_t b = oriented(hal::buttons_read());
   if (b && !held) { held = b; since = ms(); fired = false; return false; }
   if (b && held) {
     held |= b;
@@ -271,6 +281,17 @@ static void tethered() {
       case UsbEvent::PressBack: press(hal::BTN_BACK, false); last_input = ms(); break;
       case UsbEvent::ShowInfo: press(hal::BTN_UP | hal::BTN_DOWN, false); last_input = ms(); break;
       case UsbEvent::Reset: vTaskDelay(pdMS_TO_TICKS(200)); esp_restart(); break;
+      case UsbEvent::BoardChanged:
+        hal::buttons_init();
+        hal::display_init();
+        R.shown_hash = 0;
+        show(g_view, true);
+        break;
+      case UsbEvent::PanelTest:
+        R.shown_hash = 0;
+        show(g_view, true);
+        usb_panel_report();
+        break;
       case UsbEvent::None: break;
     }
     if (poll_buttons()) last_input = ms();
@@ -335,6 +356,7 @@ extern "C" void app_main() {
   }
   config_load(g_cfg);
   apply_tz();
+  hal::board_init();  // pins and panel from the stored board profile
   hal::power_init();
   hal::buttons_init();
   hal::display_init();
@@ -345,7 +367,7 @@ extern "C" void app_main() {
            device_id(), (int)why, g_cfg.provisioned, g_have_digest, (unsigned)esp_get_free_heap_size());
 
   if (why == ESP_SLEEP_WAKEUP_EXT1) {
-    uint8_t b = hal::buttons_from_wake_mask(esp_sleep_get_ext1_wakeup_status());
+    uint8_t b = oriented(hal::buttons_from_wake_mask(esp_sleep_get_ext1_wakeup_status()));
     interactive(b);
   }
   if (g_cfg.provisioned && now_s() >= R.next_sync && !in_quiet(now_s())) do_sync();

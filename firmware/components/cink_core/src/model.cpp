@@ -6,10 +6,14 @@
 
 namespace cink {
 
-static const char* const kKeys[] = {"event", "review", "chat",  "mail",  "task", "ship", "money",
-                                    "music", "quest",  "focus", "brief", "doc",  "other"};
-static const char* const kLabels[] = {"CALENDAR", "REVIEW", "SLACK",  "INBOX",  "LINEAR",   "SHIP", "STRIPE",
-                                      "MUSIC",    "QUEST",  "FOCUS",  "BRIEF",  "DOCS",     "NOTE"};
+static const char* const kKeys[] = {"event", "review", "chat",  "mail",  "task",    "ship", "money",
+                                    "music", "quest",  "focus", "brief", "doc",     "other",
+                                    "traffic", "db",   "commute", "wins"};
+static const char* const kLabels[] = {"CALENDAR", "REVIEW", "SLACK", "INBOX", "LINEAR",  "SHIP",  "STRIPE",
+                                      "MUSIC",    "QUEST",  "FOCUS", "BRIEF", "DOCS",    "NOTE",
+                                      "TRAFFIC",  "DATABASE", "COMMUTE", "THIS WEEK"};
+static_assert(sizeof kKeys / sizeof kKeys[0] == (size_t)Kind::Count, "kind keys");
+static_assert(sizeof kLabels / sizeof kLabels[0] == (size_t)Kind::Count, "kind labels");
 
 const char* kind_key(Kind k) { return (int)k < (int)Kind::Count ? kKeys[(int)k] : "other"; }
 const char* kind_label(Kind k) { return (int)k < (int)Kind::Count ? kLabels[(int)k] : "NOTE"; }
@@ -85,6 +89,7 @@ static void parse_cfg(Json& j, DeviceSettings& c) {
     if (!strcmp(key, "rf")) { if (j.i64(n)) c.refresh_min = clamp(n, 5, 240); }
     else if (!strcmp(key, "dis")) { if (j.i64(n)) c.disabled = (uint32_t)n; }
     else if (!strcmp(key, "mono")) j.boolean(c.mono);
+    else if (!strcmp(key, "rot")) { if (j.i64(n)) c.rotation = n ? 1 : 0; }
     else if (!strcmp(key, "tz")) j.str(c.tz, sizeof c.tz);
     else if (!strcmp(key, "q")) {
       int i = 0;

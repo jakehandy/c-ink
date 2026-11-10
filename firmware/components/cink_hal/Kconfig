@@ -4,10 +4,11 @@ menu "C-Ink board (TICKEY)"
         prompt "Display backend"
         default CINK_DISPLAY_HEADLESS
         help
-            ENILINX has not published the TICKEY panel interface or the Modos
-            driver yet. Until it does, the headless backend keeps every frame
-            in RAM, logs it, and serves it to C-Ink Settings over USB so the
-            whole stack can be brought up and checked without the panel.
+            Fallback when no panel is set in the board profile. A board
+            profile sent over USB (see tools/tickey-probe) always wins: an SPI
+            panel profile runs the scripted driver regardless of this choice.
+            Headless logs every frame and serves it to C-Ink Settings over USB
+            so the whole stack can be brought up without the panel.
 
         config CINK_DISPLAY_HEADLESS
             bool "Headless (log + USB frame dump)"
@@ -22,6 +23,8 @@ menu "C-Ink board (TICKEY)"
         int "Full (ghost-clearing) refresh every N updates"
         default 12
 
+    # Button pins below are only defaults: a board profile (Learn buttons in
+    # C-Ink Settings) overrides them without reflashing.
     config CINK_PIN_BTN_UP
         int "GPIO: Up button (-1 = unknown)"
         default -1

@@ -9,7 +9,7 @@ use crate::settings::Settings;
 pub const SCHEMA: &str = r#"{
   "type": "object",
   "properties": {
-    "headline": {"type": "string", "description": "One plain sentence on the shape of the day, max 70 chars"},
+    "headline": {"type": "string", "description": "One plain sentence on the shape of the day, max 60 chars. Clawd, the badge's mascot, says it in a speech bubble, so it can have a little personality."},
     "cards": {
       "type": "array",
       "maxItems": 20,
@@ -17,12 +17,12 @@ pub const SCHEMA: &str = r#"{
         "type": "object",
         "properties": {
           "id": {"type": "string", "description": "Stable id, e.g. cal:<event id>, gh:queue, slack:triage"},
-          "kind": {"type": "string", "enum": ["event","review","chat","mail","task","ship","money","music","quest","focus","brief","doc","other"]},
-          "title": {"type": "string", "description": "Max 44 chars"},
-          "short": {"type": "string", "description": "Max 18 chars, for the small tiles"},
-          "subtitle": {"type": "string", "description": "Max 60 chars"},
-          "body": {"type": "string", "description": "Max 170 chars. The one thing worth knowing."},
-          "meta": {"type": "string", "description": "Max 50 chars, e.g. 'Google Meet  ·  30 min'"},
+          "kind": {"type": "string", "enum": ["event","review","chat","mail","task","ship","money","music","quest","focus","brief","doc","other","traffic","db","commute","wins"]},
+          "title": {"type": "string", "description": "Max 40 chars"},
+          "short": {"type": "string", "description": "Max 22 chars, for the 'up next' list"},
+          "subtitle": {"type": "string", "description": "Max 34 chars"},
+          "body": {"type": "string", "description": "Max 150 chars. The one thing worth knowing."},
+          "meta": {"type": "string", "description": "Max 40 chars, e.g. 'Google Meet  ·  30 min'"},
           "big": {"type": "string", "description": "Headline number for money/music, e.g. '$4,820'"},
           "delta": {"type": "string", "description": "e.g. '+18% vs a usual Tuesday'"},
           "spark": {"type": "array", "items": {"type": "number"}, "maxItems": 24},
@@ -38,7 +38,7 @@ pub const SCHEMA: &str = r#"{
               "type": "object",
               "properties": {
                 "label": {"type": "string", "description": "Max 22 chars: person, channel or 'repo #123'"},
-                "detail": {"type": "string", "description": "Max 70 chars"},
+                "detail": {"type": "string", "description": "Max 44 chars"},
                 "badge": {"type": "string", "description": "Max 3 chars: count, age like '2d', 'DM', 'CI', '!'"},
                 "tier": {"type": "integer", "minimum": 0, "maximum": 2},
                 "urgent": {"type": "boolean"}
@@ -63,14 +63,23 @@ pub fn build(s: &Settings, now: DateTime<Local>, tools: &[String], gh_context: O
     let servers = connector_names(tools);
     let mut p = String::new();
     p.push_str(&format!(
-        "You are the brain of C-Ink, a 3.7-inch e-ink badge (720x480) that shows its owner the single most relevant \
-         thing in their day. It refreshes every {} minutes. Right now it is {} ({}).\n\n",
+        "You are the brain of C-Ink, a 3.7-inch e-ink badge worn in portrait (480 wide, 720 tall) that shows its \
+         owner the single most relevant thing in their day, with Clawd, the Claude Code mascot, in the corner. It refreshes every {} minutes. Right now it is {} ({}).\n\n",
         s.refresh_min,
         now.format("%A %B %-d, %Y, %-I:%M %p"),
         now.format("UTC%:z")
     ));
     if !s.about.trim().is_empty() {
         p.push_str(&format!("About the owner: {}\n\n", s.about.trim()));
+    }
+    if s.enabled("commute") {
+        let from = s.commute_from.trim();
+        p.push_str(&format!(
+            "For commute cards: the owner usually starts from {}, gets around {}, and wants a {}-minute buffer.\n\n",
+            if from.is_empty() { "an unknown place (only make commute cards between two in-person meetings)" } else { from },
+            match s.commute_mode.as_str() { "transit" => "by public transit", "walk" => "on foot", "bike" => "by bike", _ => "by car" },
+            s.commute_buffer_min
+        ));
     }
     p.push_str(
         "Use your connected tools (read-only) to look at what is happening from now until about 12 hours out, \
@@ -118,6 +127,10 @@ const GUIDE: &str = r#"How to build each screen:
 - brief: before 11 AM one morning brief card (start now, end 11 AM): the day in one line in title, body with the 2-3 things that matter. After 4 PM an evening wrap card (what got done, what tomorrow starts with).
 - doc: docs shared with the owner or with unresolved comments for them, last 2 days.
 - other: anything genuinely important that fits nowhere else.
+- traffic: one card from Vercel Web Analytics for the owner's main site: big = visitors today so far (e.g. "8,312"), delta against the same weekday's usual, spark = hourly visitors today, subtitle = top page and the biggest referrer. Only when it is unusual (well above or below normal) or the owner launched something; priority 20-45.
+- db: one card from Supabase advisors and logs: rows for security warnings (RLS off, exposed functions: tier 0, urgent if a table holding user data is public), performance warnings (tier 2), paused or unhealthy projects (tier 1). label = table or function, badge like "RLS" or "IDX". Nothing if clean.
+- commute: for each in-person meeting in the next 12 hours that has a physical location (an address or a named place in the location field or invite, not a video link or a room in the owner's own office), one card. Work out where the owner will be right before it: the location of their previous in-person meeting that day if there is one, otherwise their usual starting point given below. Skip it if both are the same building. Estimate door-to-door time for the owner's usual way of getting around from what you know about the two places and the time of day (rush hour, a bridge, parking), round up to 5 minutes and add the owner's buffer. "at" = leave-by time (meeting start minus that estimate), "start" = 45 minutes before leave-by, "end" = the meeting start. title = "<mode verb> to <place>", e.g. "Drive to Blue Bottle Hayes Valley" (max 40). subtitle like "About 25 min by car" (say "about": it is an estimate without live traffic). body = the meeting it is for and its start time, plus one practical note if there is a real one (parking, which entrance, the train line). meta = the destination's street address, shortened. Priority 45-70. Never route to or from anything covered by the privacy rule.
+- wins: Thursday afternoon onward, or any time the day is quiet, one card for the week so far: rows for merged PRs (count badge), Linear issues completed, deploys or releases that went live (ONCE, Vercel). Title with some warmth ("A good week so far"). Priority 25-40, higher on Friday afternoon. Never pad it: only real, completed work.
 
 Writing rules: the screen is tiny, so write like a great chief of staff: specific, short, no filler, no emoji. Use absolute times ("since 2:27 PM"), never relative ones ("18 min ago"), because the card stays on screen for a while. Titles must make sense on their own. Use "urgent": true sparingly (an incident, a deadline within the hour, a failed production deploy). Priority 0-100 is how much it deserves the owner's attention compared to the other cards. All times are ISO 8601 with offset.
 "#;

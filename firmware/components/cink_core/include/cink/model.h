@@ -20,6 +20,11 @@ enum class Kind : uint8_t {
   Brief,      // morning brief / evening wrap
   Doc,        // Drive: docs shared with you or waiting on your comments
   Other,
+  // Added later; appended so existing "disabled" bit masks keep their meaning.
+  Traffic,    // Vercel Web Analytics: visitors today vs a usual day
+  Db,         // Supabase: security / performance advisors, paused projects
+  Commute,    // calendar locations: when to leave for the next in-person meeting
+  Wins,       // the week's shipped work across GitHub, Linear, Vercel, ONCE
   Count
 };
 
@@ -68,6 +73,7 @@ struct DeviceSettings {
   int8_t quiet_start;  // -1 = no quiet hours
   int8_t quiet_end;
   bool mono;
+  uint8_t rotation;    // which way the badge hangs, 0 or 1
   char tz[64];
 };
 

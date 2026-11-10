@@ -34,6 +34,8 @@ pub struct Settings {
     pub quiet: Option<(u8, u8)>,
     /// Never use the panel's accent color.
     pub mono: bool,
+    /// Turn the picture 180 degrees, for wearing the badge the other way up.
+    pub flip: bool,
     /// LAN port for devices.
     pub port: u16,
     /// Optional relay so the TICKEY can sync away from home.
@@ -46,6 +48,15 @@ pub struct Settings {
     pub tools_checked: i64,
     /// Skip Claude runs during quiet hours.
     pub pause_in_quiet: bool,
+    /// Usual starting point for commute estimates ("home in Oakland, near Lake Merritt").
+    pub commute_from: String,
+    /// "drive", "transit", "walk" or "bike".
+    pub commute_mode: String,
+    /// Minutes added to every commute estimate.
+    pub commute_buffer_min: u32,
+    /// Last board profile sent to a TICKEY (pins, panel scripts), so it can be
+    /// re-sent after a firmware reflash. Null until one is sent.
+    pub board_profile: serde_json::Value,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -81,12 +92,17 @@ impl Default for Settings {
             instructions: String::new(),
             quiet: Some((23, 7)),
             mono: false,
+            flip: false,
             port: 7787,
             relay: None,
             devices: vec![],
             tools: vec![],
             tools_checked: 0,
             pause_in_quiet: true,
+            commute_from: String::new(),
+            commute_mode: "drive".into(),
+            commute_buffer_min: 5,
+            board_profile: serde_json::Value::Null,
         }
     }
 }

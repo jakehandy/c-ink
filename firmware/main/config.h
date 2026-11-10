@@ -24,6 +24,7 @@ struct Config {
   int8_t quiet_end;
   char tz[64];           // POSIX TZ string
   bool mono;             // never use the accent color
+  uint8_t rotation;      // 0 or 1: which way the badge hangs (see Canvas::native_byte)
 };
 
 void config_defaults(Config& c);

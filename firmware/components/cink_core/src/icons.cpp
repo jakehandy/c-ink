@@ -92,6 +92,33 @@ void icon(Canvas& c, Kind k, int x, int y, int s, Ink ink) {
       c.hline(x + P(28), y + P(50), P(44), ink, t);
       c.hline(x + P(28), y + P(70), P(44), ink, t);
       break;
+    case Kind::Traffic:
+      c.hline(x, y + s - t, s, ink, t);
+      c.fill(x + P(6), y + P(58), P(20), P(42) - t, ink);
+      c.fill(x + P(40), y + P(30), P(20), P(70) - t, ink);
+      c.fill(x + P(74), y + P(4), P(20), P(96) - t, ink);
+      break;
+    case Kind::Db:
+      // Three stacked discs, a database cylinder in outline.
+      for (int i = 0; i < 3; i++) c.round_rect(x + P(6), y + i * P(33), P(88), P(34) + t, P(16), ink, t);
+      break;
+    case Kind::Commute: {
+      // Map pin: a ring on top of a point.
+      int cx = x + s / 2, cy = y + P(36), r = P(32);
+      c.circle(cx, cy, r, ink, t + 1);
+      c.circle_fill(cx, cy, P(11), ink);
+      c.line(x + P(24), y + P(58), cx, y + P(98), ink, t + 1);
+      c.line(x + P(76), y + P(58), cx, y + P(98), ink, t + 1);
+      break;
+    }
+    case Kind::Wins: {
+      // Five-point star.
+      static const int sx[10] = {50, 61, 98, 68, 79, 50, 21, 32, 2, 39};
+      static const int sy[10] = {0, 35, 36, 58, 96, 74, 96, 58, 36, 35};
+      for (int i = 0; i < 10; i++)
+        c.line(x + P(sx[i]), y + P(sy[i]), x + P(sx[(i + 1) % 10]), y + P(sy[(i + 1) % 10]), ink, t);
+      break;
+    }
     default:
       c.circle_fill(x + s / 2, y + s / 2, s / 4, ink);
       break;

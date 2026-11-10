@@ -7,14 +7,16 @@
 #include "cJSON.h"
 #include "buffers.h"
 #include "cache.h"
+#include "cink_hal/board.h"
 #include "cink_hal/hal.h"
 #include "crypto.h"
 #include "driver/usb_serial_jtag.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "mbedtls/base64.h"
 #include "sync.h"
 
-static char s_line[4608];  // one blob_data line: 3000 bytes as base64 plus JSON
+static char s_line[4608];  // one blob_data line (3000 bytes as base64) or one board profile
 static size_t s_len;
 static bool s_drop;  // current line overflowed; discard until newline
 #define s_blob g_blob_buf
@@ -134,6 +136,47 @@ static void send_plane(const char* name, const uint8_t* p) {
   }
 }
 
+void usb_panel_report() {
+  hal::PanelReport r = hal::display_report();
+  cJSON* o = cJSON_CreateObject();
+  cJSON_AddStringToObject(o, "op", "panel_test");
+  cJSON_AddBoolToObject(o, "ok", true);
+  cJSON_AddStringToObject(o, "backend", hal::display_backend());
+  cJSON_AddNumberToObject(o, "frames", r.frames);
+  cJSON_AddNumberToObject(o, "busy_ms", r.busy_ms);
+  cJSON_AddNumberToObject(o, "total_ms", r.total_ms);
+  cJSON_AddNumberToObject(o, "timeouts", r.timeouts);
+  cJSON_AddBoolToObject(o, "busy_seen", r.busy_seen);
+  reply(o);
+}
+
+// Streams {"op":"pin","gpio":n,"level":l} for every input that changes while
+// the user presses the buttons, for `secs` seconds. Blocking on purpose: the
+// app's own button handling must not react to pins while they are unknown.
+static void learn(int secs, bool active_low) {
+  int n = hal::learn_begin(active_low);
+  cJSON* o = cJSON_CreateObject();
+  cJSON_AddStringToObject(o, "op", "learn");
+  cJSON_AddBoolToObject(o, "ok", true);
+  cJSON_AddNumberToObject(o, "watching", n);
+  reply(o);
+  int64_t end = esp_timer_get_time() + (int64_t)secs * 1000000;
+  while (esp_timer_get_time() < end) {
+    int level, pin;
+    while ((pin = hal::learn_poll(&level)) >= 0) {
+      cJSON* e = cJSON_CreateObject();
+      cJSON_AddStringToObject(e, "op", "pin");
+      cJSON_AddNumberToObject(e, "gpio", pin);
+      cJSON_AddNumberToObject(e, "level", level);
+      cJSON_AddNumberToObject(e, "t", (double)(esp_timer_get_time() / 1000));
+      reply(e);
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
+  }
+  hal::learn_end();
+  reply_ok("learn_end", true);
+}
+
 static UsbEvent handle(const char* line, Config& cfg, const UsbStatus& st) {
   cJSON* m = cJSON_Parse(line);
   if (!m) return UsbEvent::None;
@@ -199,6 +242,38 @@ static UsbEvent handle(const char* line, Config& cfg, const UsbStatus& st) {
     else if (b && !strcmp(b, "back")) ev = UsbEvent::PressBack;
     else if (b && !strcmp(b, "info")) ev = UsbEvent::ShowInfo;
     reply_ok(op, ev != UsbEvent::None);
+  } else if (!strcmp(op, "board")) {
+    static hal::Board next;  // ~1 KB; keep it off the stack
+    cJSON* prof = cJSON_GetObjectItemCaseSensitive(m, "profile");
+    char* text = prof ? cJSON_PrintUnformatted(prof) : nullptr;
+    const char* err = text ? hal::board_from_json(text, next) : "missing profile";
+    if (text) cJSON_free(text);
+    if (!err && !hal::board_save(next)) err = "could not save";
+    reply_ok(op, !err, err);
+    if (!err) ev = UsbEvent::BoardChanged;
+  } else if (!strcmp(op, "board_get")) {
+    static char out[512];
+    hal::board_to_json(hal::board(), out, sizeof out);
+    cJSON* o = cJSON_CreateObject();
+    cJSON_AddStringToObject(o, "op", op);
+    cJSON_AddBoolToObject(o, "ok", true);
+    cJSON_AddStringToObject(o, "backend", hal::display_backend());
+    cJSON* b = cJSON_Parse(out);
+    if (b) cJSON_AddItemToObject(o, "profile", b);
+    reply(o);
+  } else if (!strcmp(op, "board_reset")) {
+    hal::board_erase();
+    reply_ok(op, true);
+    ev = UsbEvent::BoardChanged;
+  } else if (!strcmp(op, "panel_test")) {
+    ev = UsbEvent::PanelTest;  // the app redraws and calls usb_panel_report()
+  } else if (!strcmp(op, "learn")) {
+    cJSON* s = cJSON_GetObjectItemCaseSensitive(m, "secs");
+    int secs = cJSON_IsNumber(s) ? (int)s->valuedouble : 15;
+    if (secs < 1) secs = 1;
+    if (secs > 30) secs = 30;
+    cJSON* al = cJSON_GetObjectItemCaseSensitive(m, "active_low");
+    learn(secs, !cJSON_IsFalse(al));
   } else if (!strcmp(op, "reset")) {
     config_erase();
     cache_erase();

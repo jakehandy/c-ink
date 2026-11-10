@@ -207,6 +207,46 @@ async fn device_reset(port: String) -> Res<()> {
 }
 
 #[tauri::command]
+async fn device_board_send(app: State<'_, App>, port: String, profile: Value) -> Res<Value> {
+    let saved = profile.clone();
+    let r = blocking(move || {
+        let mut link = device::Link::open(&port)?;
+        link.board(&profile)?;
+        link.board_get()
+    })
+    .await?;
+    let mut s = app.bridge.settings.read().clone();
+    s.board_profile = saved;
+    app.bridge.update_settings(s).map_err(err)?;
+    Ok(r)
+}
+
+#[tauri::command]
+async fn device_board_get(port: String) -> Res<Value> {
+    blocking(move || device::Link::open(&port)?.board_get()).await
+}
+
+#[tauri::command]
+async fn device_board_reset(port: String) -> Res<()> {
+    blocking(move || device::Link::open(&port)?.board_reset()).await
+}
+
+#[tauri::command]
+async fn device_panel_test(port: String) -> Res<Value> {
+    blocking(move || device::Link::open(&port)?.panel_test()).await
+}
+
+#[tauri::command]
+async fn device_learn(port: String, secs: u32, active_low: bool) -> Res<Value> {
+    blocking(move || {
+        let events = device::Link::open(&port)?.learn(secs, active_low)?;
+        let [up, down, back] = device::assign_buttons(&events, active_low);
+        Ok(serde_json::json!({"up": up, "down": down, "back": back, "events": events.len()}))
+    })
+    .await
+}
+
+#[tauri::command]
 fn forget_device(app: State<App>, id: String) -> Res<()> {
     let mut s = app.bridge.settings.read().clone();
     s.devices.retain(|d| d.id != id);
@@ -299,7 +339,8 @@ fn main() {
             get_state, save_settings, claude_status, claude_login, refresh_connections, sync_now,
             render_preview, list_ports, setup_device, update_device, device_press, device_frame,
             device_reset, forget_device, preview_prompt, wire_digest, get_autostart, set_autostart,
-            device_settings_json
+            device_settings_json, device_board_send, device_board_get, device_board_reset, device_panel_test,
+            device_learn
         ])
         .run(tauri::generate_context!())
         .expect("error while running C-Ink Settings");

@@ -15,13 +15,17 @@ jobs:
         run: cmake -S sim -B sim/build -DCMAKE_BUILD_TYPE=Release && cmake --build sim/build -j
       - name: Test
         run: ./sim/build/cink_tests
+      - name: Probe tool tests
+        run: python3 -m unittest discover -s tools/tickey-probe -v
       - name: Render sample screens
         run: |
           mkdir -p out
           TZS=PST8PDT,M3.2.0,M11.1.0
           N=1794350820
           ./sim/build/cink_sim sim/fixtures/day.json --tz $TZS --now $N --out out/now.png --paper
-          for i in 1 2 3 4 5 6 7 8 9 10; do
+          ./sim/build/cink_sim sim/fixtures/day.json --tz $TZS --now $((N+9180)) --out out/commute.png --paper
+          ./sim/build/cink_sim sim/fixtures/friday.json --tz $TZS --now $N --out out/friday.png --paper
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14; do
             ./sim/build/cink_sim sim/fixtures/day.json --tz $TZS --now $N --screen browse --index $i --out out/card-$i.png --paper
           done
       - uses: actions/upload-artifact@v4

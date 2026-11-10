@@ -1,12 +1,12 @@
 # C-Ink
 
-A custom OS for the [ENILINX TICKEY](https://enilinxtickey.com/) e-ink badge that uses Claude to put the single most relevant thing in your day on its 3.7" screen: the meeting you are about to walk into, the PRs and Slack threads that need you, the deploy that just broke, and a few fun ones on top.
+A custom OS for the [ENILINX TICKEY](https://enilinxtickey.com/) e-ink badge that uses Claude to put the single most relevant thing in your day on its 3.7" screen: the meeting you are about to walk into, when to leave for it, the PRs and Slack threads that need you, the deploy that just broke, and a few fun ones on top. It is laid out for wearing the badge upright, and Clawd sits at the bottom of every screen saying the one-line shape of your day.
 
 <p>
-<img src="docs/screens/next-up.png" width="49%" alt="Next meeting with a countdown">
-<img src="docs/screens/slack.png" width="49%" alt="Slack sorted by importance">
-<img src="docs/screens/review.png" width="49%" alt="Pull requests waiting on you">
-<img src="docs/screens/money.png" width="49%" alt="Revenue today with a sparkline">
+<img src="docs/screens/next-up.png" width="24%" alt="Next meeting with a countdown">
+<img src="docs/screens/commute.png" width="24%" alt="When to leave for the next in-person meeting">
+<img src="docs/screens/slack.png" width="24%" alt="Slack sorted by importance">
+<img src="docs/screens/wins.png" width="24%" alt="This week's wins">
 </p>
 
 These are real frames from the device's renderer (`sim/`), with sample data.
@@ -34,6 +34,7 @@ These are real frames from the device's renderer (`sim/`), with sample data.
 | Screen | From | What it shows |
 |---|---|---|
 | Next up | Calendar | Countdown to your next meeting plus the one thing to know going in |
+| Commute | Calendar locations | When to leave for your next in-person meeting, counting down to leave-by. Claude estimates door to door from where you will be before it (your previous meeting or the starting point you set) and how you get around, plus your buffer |
 | Pull requests | GitHub (or the `gh` CLI) | Reviews waiting on you, your PRs failing CI |
 | Slack | Slack | Messages grouped into *needs you now*, *today*, *when you can* |
 | Inbox | Gmail | Threads where a person is waiting on your reply |
@@ -44,11 +45,16 @@ These are real frames from the device's renderer (`sim/`), with sample data.
 | Game night | Tavern | Next tabletop session and where your character stands |
 | Focus window | Calendar + everything | When you have a real gap, the one thing worth doing with it |
 | Brief & wrap | Everything | A morning brief and an end-of-day wrap |
+| Traffic | Vercel Web Analytics | Visitors today against a usual day, top page and referrer, when it is unusual |
+| Database health | Supabase | Tables with row level security off, other advisor warnings, paused projects |
+| This week's wins | GitHub, Linear, Vercel, ONCE | Merged PRs, closed issues and releases this week, from Thursday afternoon on |
 | Docs | Drive | Docs shared with you or waiting on your comments (off by default) |
 
 Plus a night screen during quiet hours, an "all clear" screen, an offline state, a device info screen and a setup screen. See [`docs/screens/`](docs/screens).
 
-Buttons: **Up/Down** page through cards, **Back** returns to the top card (press again for device info), **hold Back** to sync now.
+Buttons: **Up/Down** page through cards, **Back** returns to the top card (press again for device info), **hold Back** to sync now. If you wear it the other way up, tick **Orientation** in Settings: the picture turns 180° and Up and Down swap.
+
+Clawd's mood follows the top card: calm most of the time, busy when a meeting is minutes away, alert for anything urgent, happy on wins and an empty day, puzzled when offline, asleep at night.
 
 ## Repo layout
 
@@ -58,7 +64,7 @@ Buttons: **Up/Down** page through cards, **Back** returns to the top card (press
 | `sim/` | Builds `cink_core` for your computer: renders frames to PNG and runs the core tests. |
 | `desktop/` | C-Ink Settings (Tauri 2, Mac / Windows / Linux) and `cink-bridge`, the Rust library that runs Claude, builds and seals digests and serves them. Also builds as a headless `cink-bridge` binary for an always-on machine. |
 | `relay/` | Optional Cloudflare Worker so the TICKEY can sync away from home. Stores ciphertext only. |
-| `tools/` | Font rasterizer (Inter → 1-bit bitmaps) and the firmware size check. |
+| `tools/` | Font rasterizer (Inter → 1-bit bitmaps), the firmware size check, and `tickey-probe`, which reads the TICKEY's pin map off its stock firmware. |
 | `docs/` | [Architecture](docs/architecture.md), [wire protocol](docs/protocol.md), [hardware notes](docs/hardware.md). |
 
 ## Getting started
@@ -70,11 +76,11 @@ Buttons: **Up/Down** page through cards, **Back** returns to the top card (press
 
 ## Size
 
-The firmware image is 1.08 MB, 13% of the 8 MB flash (CI fails the build above 2 MB). The fonts are the biggest piece of C-Ink's own code at ~210 KB; the rest is ESP-IDF, Wi-Fi and TLS. In RAM, the frame (86 KB) and the digest (42 KB) are static and ~94 KB of internal DRAM is left for Wi-Fi and TLS at runtime. No PSRAM required.
+The firmware image is 1.1 MB, 13% of the 8 MB flash (CI fails the build above 2 MB). The fonts are the biggest piece of C-Ink's own code at ~210 KB; the rest is ESP-IDF, Wi-Fi and TLS. In RAM, the frame (86 KB) and the digest (42 KB) are static and ~85 KB of internal DRAM is left for Wi-Fi and TLS at runtime. No PSRAM required.
 
 ## Status
 
-Everything above the display runs today: digest generation, sealing, LAN and relay sync, caching, ranking, rendering, USB setup, buttons and sleep. ENILINX has not published the TICKEY's pinout or the Modos panel driver yet (promised with the open firmware after the campaign), so the firmware currently builds with a headless display backend and the button and battery pins unset. Once the vendor BSP lands, finishing the port is one small file per peripheral; see [docs/hardware.md](docs/hardware.md).
+Everything above the display runs today: digest generation, sealing, LAN and relay sync, caching, ranking, rendering, USB setup, buttons and sleep. ENILINX has not published the TICKEY's pinout or panel driver yet, so C-Ink learns them instead of waiting: `tools/tickey-probe` reads the pin map off the stock firmware over USB-JTAG, C-Ink Settings sends it to the device as a board profile, a scripted SPI e-paper driver runs the panel from that profile, and **Learn buttons** finds the buttons by watching the pins. If the probe shows a waveform-driven parallel panel (likely, given the Modos driver), that needs one more backend; see [docs/hardware.md](docs/hardware.md#getting-past-the-missing-panel-driver) for the steps and the honest limits.
 
 ## Development
 

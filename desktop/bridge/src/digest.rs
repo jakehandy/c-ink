@@ -68,6 +68,7 @@ pub fn device_cfg(s: &Settings) -> Value {
         "dis": s.disabled_mask(),
         "q": [qa, qb],
         "mono": s.mono,
+        "rot": if s.flip { 1 } else { 0 },
         "tz": crate::tz::posix(&crate::tz::iana()),
     })
 }

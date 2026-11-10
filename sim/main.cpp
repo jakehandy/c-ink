@@ -88,8 +88,8 @@ int main(int argc, char** argv) {
   for (int y = 0; y < Canvas::H; y++)
     for (int x = 0; x < Canvas::W; x++) px[y * Canvas::W + x] = (uint8_t)g_cv.get(x, y);
   // index 0 white, 1 black, 2 accent. --paper approximates the panel.
-  const uint8_t flat[] = {255, 255, 255, 0, 0, 0, 214, 40, 40};
-  const uint8_t real[] = {236, 233, 224, 34, 34, 38, 178, 52, 44};
+  const uint8_t flat[] = {255, 255, 255, 0, 0, 0, 217, 119, 87};  // accent: Claude orange
+  const uint8_t real[] = {236, 233, 224, 34, 34, 38, 200, 104, 72};
   if (!png::write(out, Canvas::W, Canvas::H, px.data(), paper ? real : flat, 3)) return 1;
   int64_t nc = next_change(g_d, now, disabled);
   printf("%s: %d ranked cards, frame %08x, next change in %lld s\n", out, n, g_cv.hash(), (long long)(nc - now));

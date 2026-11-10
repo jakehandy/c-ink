@@ -24,6 +24,11 @@ pub const KINDS: &[KindInfo] = &[
     KindInfo { key: "brief", name: "Brief & wrap", blurb: "A one-card morning brief and an end-of-day wrap.", connectors: &[], default_on: true },
     KindInfo { key: "doc", name: "Docs", blurb: "Docs shared with you or waiting on your comments.", connectors: &["drive", "notion", "docs"], default_on: false },
     KindInfo { key: "other", name: "Anything else", blurb: "Something important that fits no other screen.", connectors: &[], default_on: true },
+    // Appended after "other" so the device's bit order stays stable.
+    KindInfo { key: "traffic", name: "Traffic", blurb: "Visitors today against a usual day, and where they came from.", connectors: &["vercel"], default_on: true },
+    KindInfo { key: "db", name: "Database health", blurb: "Supabase security and performance warnings, paused projects, failing functions.", connectors: &["supabase"], default_on: true },
+    KindInfo { key: "commute", name: "Commute", blurb: "When to leave for your next in-person meeting, from its location and where you will be before it.", connectors: &["calendar"], default_on: true },
+    KindInfo { key: "wins", name: "This week's wins", blurb: "What you shipped this week: merged PRs, closed issues, releases. Shows up on Friday afternoons and quiet stretches.", connectors: &["github", "linear", "vercel", "once"], default_on: true },
 ];
 
 pub fn index_of(key: &str) -> Option<usize> {

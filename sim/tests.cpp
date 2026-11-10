@@ -7,6 +7,7 @@
 #include <string>
 
 #include "cink/canvas.h"
+#include "cink/clawd.h"
 #include "cink/model.h"
 #include "cink/rank.h"
 #include "cink/timefmt.h"
@@ -56,6 +57,26 @@ static void test_truncation_keeps_utf8() {
   const char* p = d.cards[0].title;
   while (next_cp(&p)) {}
   CHECK(p == d.cards[0].title + n);
+}
+
+static void test_commute() {
+  // Leave-by in 10 min for a meeting in 35. The commute card leads until 10
+  // minutes after leave-by, then drops out while the meeting card stays.
+  int64_t now = 1'800'000'000;
+  char buf[512];
+  snprintf(buf, sizeof buf,
+           R"({"v":1,"gen":%lld,"cards":[
+             {"id":"go","k":"commute","t":"Drive there","p":55,"at":%lld,"en":%lld},
+             {"id":"meet","k":"event","t":"Meeting","p":55,"at":%lld}]})",
+           (long long)now, (long long)(now + 600), (long long)(now + 2100), (long long)(now + 2100));
+  CHECK(parse(buf));
+  Ranked r;
+  rank(d, now, 0, r);
+  CHECK(r.n == 2 && strcmp(d.cards[r.idx[0]].id, "go") == 0);
+  rank(d, now + 700, 0, r);  // 100 s past leave-by: still first
+  CHECK(r.n == 2 && strcmp(d.cards[r.idx[0]].id, "go") == 0);
+  rank(d, now + 1300, 0, r);  // 11 min past leave-by: gone
+  CHECK(r.n == 1 && strcmp(d.cards[r.idx[0]].id, "meet") == 0);
 }
 
 static void test_rank() {
@@ -146,7 +167,48 @@ static void test_render_all_screens() {
   CHECK(!cv.has_accent());
 }
 
+static void test_rotation() {
+  // native_byte() reads the portrait planes as the landscape panel scans them.
+  static uint8_t plane[Canvas::PLANE];
+  memset(plane, 0, sizeof plane);
+  auto set = [](int x, int y) { plane[y * Canvas::STRIDE + x / 8] |= 0x80 >> (x & 7); };
+  set(0, 0);                             // top-left of the badge
+  set(Canvas::W - 1, Canvas::H - 1);     // bottom-right
+  // Rotation 0: logical (x, y) lands on native (719 - y, x).
+  CHECK(Canvas::native_byte(plane, 0, 89, 0) == 0x01);   // native (719, 0)
+  CHECK(Canvas::native_byte(plane, 479, 0, 0) == 0x80);  // native (0, 479)
+  // Rotation 1 is the badge turned the other way: (y, 479 - x).
+  CHECK(Canvas::native_byte(plane, 479, 0, 1) == 0x80);  // (0,0) -> native (0, 479)
+  CHECK(Canvas::native_byte(plane, 0, 89, 1) == 0x01);   // (479,719) -> native (719, 0)
+  int ones = 0;
+  for (int r = 0; r < 2; r++)
+    for (int ny = 0; ny < Canvas::NATIVE_H; ny++)
+      for (int bx = 0; bx < Canvas::NATIVE_W / 8; bx++) ones += __builtin_popcount(Canvas::native_byte(plane, ny, bx, r));
+  CHECK(ones == 4);
+}
+
+static void test_clawd_moods() {
+  // Each mood draws a different Clawd, and Clawd stays in its box.
+  uint32_t seen[6];
+  for (int m = 0; m < 6; m++) {
+    cv.clear();
+    clawd(cv, 100, 100, 6, (Mood)m, Ink::Accent);
+    seen[m] = cv.hash();
+    for (int y = 0; y < Canvas::H; y++)
+      for (int x = 0; x < Canvas::W; x++)
+        if (cv.get(x, y) != Ink::White) {
+          CHECK(x >= 100 && x < 100 + clawd_w(6) + 6 * 6);
+          CHECK(y >= 100 - 3 * 6 - 4 && y < 100 + clawd_h(6));
+        }
+  }
+  for (int i = 0; i < 6; i++)
+    for (int j = i + 1; j < 6; j++) CHECK(seen[i] != seen[j]);
+}
+
 int main() {
+  test_commute();
+  test_rotation();
+  test_clawd_moods();
   test_parse();
   test_truncation_keeps_utf8();
   test_rank();

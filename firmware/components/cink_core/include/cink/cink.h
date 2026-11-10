@@ -10,8 +10,8 @@
 extern "C" {
 #endif
 
-#define CINK_W 720
-#define CINK_H 480
+#define CINK_W 480
+#define CINK_H 720
 #define CINK_PLANE_BYTES (CINK_W / 8 * CINK_H)
 
 typedef struct {
@@ -26,7 +26,7 @@ typedef struct {
   uint32_t disabled; /* bit per kind */
 } cink_frame_opts;
 
-/* Renders the digest into two 1-bit planes (MSB first, 90 bytes per row).
+/* Renders the digest into two 1-bit planes (MSB first, 60 bytes per row, portrait).
  * Returns the number of ranked cards, or -1 if the JSON is not a digest. */
 int cink_render_json(const char* json, size_t len, const cink_frame_opts* o, uint8_t* black, uint8_t* accent);
 

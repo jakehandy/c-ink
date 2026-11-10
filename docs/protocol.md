@@ -13,12 +13,15 @@ Plaintext, before sealing. Max 20 KB. Short keys keep it small; the device ignor
   "cfg": { "rf": 15, "dis": 0, "q": [23, 7], "mono": false, "rot": 0, "tz": "PST8PDT,M3.2.0,M11.1.0" },
   "cards": [
     {
-      "id": "cal:abc", "k": "event",          // kind: event review chat mail task ship money music quest focus brief doc other traffic db commute wins
+      "id": "cal:abc", "k": "event",          // kind: event review chat mail task ship money music quest focus brief doc other traffic db commute wins news weather claude cloud parcel
       "t": "Design review", "sh": "Design review",
       "s": "with Priya and Marco", "b": "Priya wants a yes or no on pricing.", "m": "Meet · 30 min",
       "p": 70, "u": false,                    // priority 0-100, urgent
       "at": 1794351540, "st": 0, "en": 1794353340,
       "big": "$4,820", "dl": "+18% vs a usual Tuesday", "sp": [0, 12, 40, 100],
+      "src": "gcal",                          // brand icon: gcal github gmail gdrive linear vercel stripe cloudflare supabase claude shop notion spotify slack
+      "wx": "rain",                           // weather cards: clear partly cloudy rain storm snow fog
+      "sec": ["WORK", "PERSONAL", ""],        // names for row tiers 0-2 (inbox accounts, news desks); empty = NOW / TODAY / WHEN YOU CAN
       "r": [ { "l": "Sam Ortiz", "d": "Wants your OK by 4 PM", "g": "DM", "tr": 0, "u": true } ]
     }
   ]
@@ -26,6 +29,8 @@ Plaintext, before sealing. Max 20 KB. Short keys keep it small; the device ignor
 ```
 
 `dis` is a bitmask with bit *n* for kind *n* in the order listed above. New kinds are only ever appended, so old masks keep their meaning. `rot` 1 turns the picture 180° for wearing the badge the other way up (the device also swaps Up and Down).
+
+`src` picks the small brand mark drawn in the eyebrow and Up next row; without it the device uses the kind's usual source, then a line icon.
 
 A `commute` card's `at` is the leave-by time and `en` the meeting start; the device drops it 10 minutes after leave-by.
 

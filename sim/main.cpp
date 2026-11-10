@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "cink/canvas.h"
+#include "cink/clawd.h"
 #include "cink/model.h"
 #include "cink/rank.h"
 #include "cink/ui.h"
@@ -45,6 +46,7 @@ int main(int argc, char** argv) {
   bool paper = false;
   int64_t sync_age = 120;
   uint32_t disabled = 0;
+  bool gallery = false;
   for (int i = 1; i < argc; i++) {
     std::string a = argv[i];
     auto next = [&]() { return i + 1 < argc ? argv[++i] : (char*)""; };
@@ -61,6 +63,7 @@ int main(int argc, char** argv) {
     else if (a == "--disable") disabled |= 1u << (int)kind_from_key(next());
     else if (a == "--screen") {
       std::string s = next();
+      if (s == "clawds") gallery = true;
       v.screen = s == "browse" ? Screen::Browse : s == "info" ? Screen::Info : s == "setup" ? Screen::Setup
                : s == "night" ? Screen::Night : Screen::Auto;
     } else in = argv[i];
@@ -83,7 +86,21 @@ int main(int argc, char** argv) {
   strcpy(st.ip, "192.168.1.48");
   strcpy(st.source, "C-Ink Settings on MacBook");
 
-  int n = render(g_cv, g_d, st, v, disabled);
+  int n = 0;
+  if (gallery) {
+    // Every Clawd pose, for the docs.
+    g_cv.clear();
+    const int cell = 5, cols = 4, cw = Canvas::W / cols, rh = 101;
+    for (int m = 0; m < (int)Mood::Count; m++) {
+      int cx = (m % cols) * cw, cy = 8 + (m / cols) * rh;
+      clawd(g_cv, cx + (cw - clawd_w(cell)) / 2, cy + 22, cell, (Mood)m, Ink::Accent);
+      const char* name = mood_name((Mood)m);
+      g_cv.text(font_caption, cx + (cw - Canvas::measure(font_caption, name)) / 2, cy + 22 + clawd_h(cell) + 24, name,
+                Ink::Black);
+    }
+  } else {
+    n = render(g_cv, g_d, st, v, disabled);
+  }
   std::vector<uint8_t> px(Canvas::W * Canvas::H);
   for (int y = 0; y < Canvas::H; y++)
     for (int x = 0; x < Canvas::W; x++) px[y * Canvas::W + x] = (uint8_t)g_cv.get(x, y);

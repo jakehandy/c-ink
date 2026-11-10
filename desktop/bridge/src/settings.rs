@@ -57,6 +57,17 @@ pub struct Settings {
     /// Last board profile sent to a TICKEY (pins, panel scripts), so it can be
     /// re-sent after a firmware reflash. Null until one is sent.
     pub board_profile: serde_json::Value,
+    /// Where the weather screen is for: "94110", "Portland, OR" or "45.52,-122.68".
+    pub weather_location: String,
+    /// The place that location resolved to, looked up once.
+    pub weather_place: Option<crate::weather::Place>,
+    pub weather_fahrenheit: bool,
+    /// What the morning news screen should cover, in the owner's words.
+    pub news_prompt: String,
+    /// Read-only Cloudflare API token (Account > Notifications > Read).
+    pub cloudflare_token: String,
+    pub cloudflare_account: String,
+    pub cloudflare_account_name: String,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -103,6 +114,13 @@ impl Default for Settings {
             commute_mode: "drive".into(),
             commute_buffer_min: 5,
             board_profile: serde_json::Value::Null,
+            weather_location: String::new(),
+            weather_place: None,
+            weather_fahrenheit: true,
+            news_prompt: String::new(),
+            cloudflare_token: String::new(),
+            cloudflare_account: String::new(),
+            cloudflare_account_name: String::new(),
         }
     }
 }

@@ -4,7 +4,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use base64::Engine;
-use cink_bridge::{claude, device, digest, kinds::KINDS, preview, prompt, tz, Bridge, Settings};
+use cink_bridge::kinds::{Connect, KINDS, SOURCES};
+use cink_bridge::{claude, claude_usage, cloudflare, device, digest, preview, prompt, tz, weather, Bridge, Settings};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tauri::menu::{Menu, MenuItem};
@@ -43,8 +44,46 @@ fn get_state(app: State<App>) -> Value {
             })
         })
         .collect();
+    // The Marketplace: every source, whether it is connected, and its screens.
+    let sources: Vec<Value> = SOURCES
+        .iter()
+        .map(|src| {
+            let (how, found): (&str, Vec<String>) = match &src.connect {
+                Connect::Connector(frags) => (
+                    "connector",
+                    s.tools
+                        .iter()
+                        .filter_map(|t| t.strip_prefix("mcp__").and_then(|t| t.split("__").next()))
+                        .filter(|server| frags.iter().any(|f| server.to_lowercase().contains(f)))
+                        .map(str::to_string)
+                        .collect::<std::collections::BTreeSet<_>>()
+                        .into_iter()
+                        .collect(),
+                ),
+                Connect::Builtin => ("builtin", vec![]),
+                Connect::Local => ("local", vec![]),
+            };
+            let connected = match src.id {
+                "weather" => s.weather_place.is_some() && !s.weather_location.trim().is_empty(),
+                "cloudflare" => !s.cloudflare_token.is_empty() && !s.cloudflare_account.is_empty(),
+                "claudecode" => claude_usage::projects_dir().exists(),
+                "news" | "claude" => true,
+                "github" => !found.is_empty() || which_gh(),
+                _ => !found.is_empty(),
+            };
+            let screens: Vec<Value> = KINDS
+                .iter()
+                .filter(|k| k.source == src.id || src.also.contains(&k.key))
+                .map(|k| json!({"key": k.key, "name": k.name, "blurb": k.blurb, "enabled": s.enabled(k.key),
+                                "shared": k.source != src.id}))
+                .collect();
+            json!({"id": src.id, "name": src.name, "icon": src.icon, "blurb": src.blurb, "how": how,
+                   "connected": connected, "accounts": found.len(), "screens": screens})
+        })
+        .collect();
     json!({
         "settings": s,
+        "sources": sources,
         "screens": screens,
         "connectors": connectors,
         "status": app.bridge.status(),
@@ -55,6 +94,56 @@ fn get_state(app: State<App>) -> Value {
 
 fn which_gh() -> bool {
     claude::gh_context_available()
+}
+
+/// Looks up the weather place and shows the card it would make right now.
+#[tauri::command]
+async fn weather_lookup(app: State<'_, App>, query: String, fahrenheit: bool) -> Res<Value> {
+    let b = app.bridge.clone();
+    blocking(move || {
+        let place = weather::geocode(&query)?;
+        let v = weather::fetch(&place, fahrenheit)?;
+        let card = weather::card(&v, &place, chrono::Local::now())?;
+        let mut s = b.settings.read().clone();
+        s.weather_location = query.trim().to_string();
+        s.weather_place = Some(place.clone());
+        s.weather_fahrenheit = fahrenheit;
+        b.update_settings(s)?;
+        Ok(json!({"place": place, "card": card}))
+    })
+    .await
+}
+
+/// Checks a Cloudflare token, finds the account and saves both.
+#[tauri::command]
+async fn cloudflare_connect(app: State<'_, App>, token: String, account: String) -> Res<Value> {
+    let b = app.bridge.clone();
+    blocking(move || {
+        let (id, name) = cloudflare::verify(&token, &account)?;
+        let alerts = cloudflare::history(&token, &id, chrono::Local::now()).map(|a| a.len()).ok();
+        let mut s = b.settings.read().clone();
+        s.cloudflare_token = token.trim().to_string();
+        s.cloudflare_account = id.clone();
+        s.cloudflare_account_name = name.clone();
+        b.update_settings(s)?;
+        Ok(json!({"account": id, "name": name, "alerts": alerts}))
+    })
+    .await
+}
+
+#[tauri::command]
+fn cloudflare_disconnect(app: State<App>) -> Res<()> {
+    let mut s = app.bridge.settings.read().clone();
+    s.cloudflare_token.clear();
+    s.cloudflare_account.clear();
+    s.cloudflare_account_name.clear();
+    app.bridge.update_settings(s).map_err(err)
+}
+
+/// What the Claude Code screen would show right now (read on this computer only).
+#[tauri::command]
+async fn claude_code_preview() -> Res<Value> {
+    blocking(|| Ok(claude_usage::build(chrono::Local::now()).unwrap_or(Value::Null))).await
 }
 
 #[tauri::command]
@@ -256,7 +345,7 @@ fn forget_device(app: State<App>, id: String) -> Res<()> {
 #[tauri::command]
 fn preview_prompt(app: State<App>) -> String {
     let s = app.bridge.settings.read().clone();
-    prompt::build(&s, chrono::Local::now(), &s.tools, None)
+    prompt::build(&s, chrono::Local::now(), &s.tools, None, &[])
 }
 
 #[tauri::command]
@@ -340,7 +429,7 @@ fn main() {
             render_preview, list_ports, setup_device, update_device, device_press, device_frame,
             device_reset, forget_device, preview_prompt, wire_digest, get_autostart, set_autostart,
             device_settings_json, device_board_send, device_board_get, device_board_reset, device_panel_test,
-            device_learn
+            device_learn, weather_lookup, cloudflare_connect, cloudflare_disconnect, claude_code_preview
         ])
         .run(tauri::generate_context!())
         .expect("error while running C-Ink Settings");

@@ -25,8 +25,18 @@ enum class Kind : uint8_t {
   Db,         // Supabase: security / performance advisors, paused projects
   Commute,    // calendar locations: when to leave for the next in-person meeting
   Wins,       // the week's shipped work across GitHub, Linear, Vercel, ONCE
+  News,       // morning news, built from the owner's own news prompt
+  Weather,    // forecast for the owner's location (built by the bridge)
+  Claude,     // Claude Code: sessions waiting on you, what got built, tokens
+  Cloud,      // Cloudflare: alerts and Workers errors
+  Parcel,     // deliveries from Shop and Link
   Count
 };
+static_assert((int)Kind::Count <= 32, "disabled masks are 32 bits");
+
+// Weather condition for a Weather card (wire key "wx"), also Clawd's outfit.
+enum class Wx : uint8_t { None, Clear, Partly, Cloudy, Rain, Storm, Snow, Fog };
+Wx wx_from_key(const char* s);
 
 const char* kind_key(Kind k);    // wire name, e.g. "event"
 const char* kind_label(Kind k);  // eyebrow label, e.g. "CALENDAR"
@@ -58,6 +68,9 @@ struct Card {
   int64_t start;      // relevant from (unix s, 0 = always)
   int64_t end;        // relevant until (0 = until next sync)
   int64_t at;         // time anchor for countdowns (event start)
+  char src[12];       // brand the data came from ("github", "gmail"); icon only
+  char sec[3][16];    // optional section names for tiers 0..2 ("WORK", "LOCAL")
+  Wx wx;
   Row rows[MAX_ROWS];
   uint8_t nrows;
   uint8_t spark[MAX_SPARK];  // 0..100

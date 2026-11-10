@@ -2,8 +2,9 @@
 //
 //   status bar      day, sync state, Wi-Fi, battery
 //   hero            the single most relevant card, in one of four layouts
-//   up next         the next three cards, so paging always previews what comes
-//   Clawd's dock    the mascot, its mood, and Claude's one-line read on the day
+//   up next         the next three cards, so paging always previews what comes,
+//                   with a small Clawd standing on its top rule, posed for the
+//                   card on screen
 //
 // Everything is black on white with one accent color, kept for what deserves
 // it: urgency, the countdown, Clawd.
@@ -26,7 +27,7 @@ constexpr int BAR_Y = 34;        // status bar baseline
 constexpr int BAR_RULE = 50;
 constexpr int HERO_Y = 62;
 constexpr int NEXT_ROW_H = 40;   // one "up next" row
-constexpr int DOCK_RULE = 630;   // Clawd's dock below this line
+constexpr int CLAWD_CELL = 4;    // the small Clawd on the up next rule: 72 x 40
 constexpr int TRACK_CAPS = 6;    // 1.5 px letterspacing for small caps
 
 Ink accent_ink(const Status& st) { return st.mono ? Ink::Black : Ink::Accent; }
@@ -99,7 +100,7 @@ struct Box { int x, y, w, h; };
 
 // Eyebrow for a card: icon + KIND · context
 void card_eyebrow(Canvas& cv, const Card& c, const Status& st, int x, int y, int w, const char* ctx) {
-  icon(cv, c.kind, x, y - 15, 18, c.urgent ? accent_ink(st) : Ink::Black);
+  card_icon(cv, c, x, y - 15, 18, c.urgent ? accent_ink(st) : Ink::Black);
   char buf[96];
   if (ctx && *ctx) snprintf(buf, sizeof buf, "%s  \xC2\xB7  %s", kind_label(c.kind), ctx);
   else snprintf(buf, sizeof buf, "%s", kind_label(c.kind));
@@ -209,7 +210,9 @@ void badge(Canvas& cv, int x, int y, const char* s, Ink fill) {
 }
 
 // Lists (Slack, PRs, inbox, wins): each row is a label line and a detail line.
-void hero_rows(Canvas& cv, const Card& c, const Status& st, Box b, const char* ctx) {
+void hero_rows(Canvas& cv, const Card& c, const Status& st, Box b, const char* ctx, int narrow_below) {
+  // Left edge of Clawd and anything drawn around him.
+  const int clawd_left = W - M - clawd_w(CLAWD_CELL) - 6 * CLAWD_CELL - 12;
   int y = b.y + 22;
   card_eyebrow(cv, c, st, b.x, y, b.w, ctx);
   y += 50;
@@ -217,7 +220,7 @@ void hero_rows(Canvas& cv, const Card& c, const Status& st, Box b, const char* c
   y += (used - 1) * 42 + 8;
   bool tiers = false;
   for (int i = 1; i < c.nrows; i++) if (c.rows[i].tier != c.rows[0].tier) tiers = true;
-  const int row_h = 58, tier_h = 32;
+  const int row_h = 56, tier_h = 28;
   // How many rows fit; if not all, keep a line for "+N more".
   auto count_fit = [&](int limit) {
     int yy = y, lt = -1, n = 0;
@@ -238,8 +241,13 @@ void hero_rows(Canvas& cv, const Card& c, const Status& st, Box b, const char* c
     const Row& r = c.rows[i];
     if (tiers && r.tier != last_tier) {
       y += tier_h;
-      int tw = eyebrow(cv, b.x, y, tier_name(r.tier), r.tier == 0 ? accent_ink(st) : Ink::Black);
-      cv.dots(b.x + tw + 12, y - 5, b.w - tw - 12, 3, Ink::Black);
+      // Cards can name their own sections (inbox accounts, news desks).
+      const char* name = c.sec[r.tier][0] ? c.sec[r.tier] : tier_name(r.tier);
+      Ink ink = (r.tier == 0 && !c.sec[0][0]) ? accent_ink(st) : Ink::Black;
+      char up[24];
+      upper(name, up, sizeof up);
+      int tw = eyebrow(cv, b.x, y, up, ink);
+      cv.dots(b.x + tw + 12, y - 5, (y - 12 > narrow_below ? clawd_left : b.x + b.w) - b.x - tw - 12, 3, Ink::Black);
       last_tier = r.tier;
     }
     y += 32;
@@ -251,8 +259,9 @@ void hero_rows(Canvas& cv, const Card& c, const Status& st, Box b, const char* c
       cv.circle_fill(x + 7, y - 7, 5, mark);
     }
     x += 52;
-    cv.text(font_body_b, x, y, r.label, Ink::Black, 0, b.x + b.w - x);
-    if (r.detail[0]) cv.text(font_small, x, y + 26, r.detail, Ink::Black, 0, b.x + b.w - x);
+    int right = b.x + b.w;
+    cv.text(font_body_b, x, y, r.label, Ink::Black, 0, (y > narrow_below ? clawd_left : right) - x);
+    if (r.detail[0]) cv.text(font_small, x, y + 26, r.detail, Ink::Black, 0, (y + 26 - 20 > narrow_below ? clawd_left : right) - x);
     y += row_h - 32;
   }
   if (fit < c.nrows) {
@@ -294,8 +303,13 @@ void hero_metric(Canvas& cv, const Card& c, const Status& st, Box b, const char*
   int y = b.y + 22;
   card_eyebrow(cv, c, st, b.x, y, b.w, ctx);
   y += 90;
-  cv.text(font_big, b.x - 2, y, c.big, Ink::Black, 0, b.w);
-  if (c.delta[0]) cv.text(font_body_b, b.x, y + 38, c.delta, c.urgent ? accent_ink(st) : Ink::Black, 0, b.w);
+  int icon_w = 0;
+  if (c.kind == Kind::Weather && c.wx != Wx::None) {
+    icon_w = 104;
+    wx_icon(cv, c.wx, b.x + b.w - 92, y - 72, 92, Ink::Black);
+  }
+  cv.text(font_big, b.x - 2, y, c.big, Ink::Black, 0, b.w - icon_w);
+  if (c.delta[0]) cv.text(font_body_b, b.x, y + 38, c.delta, c.urgent ? accent_ink(st) : Ink::Black, 0, b.w - icon_w);
   y += 52;
   if (c.nspark >= 2) {
     sparkline(cv, c, st, {b.x, y + 14, b.w, 88});
@@ -337,7 +351,12 @@ void hero(Canvas& cv, const Card& c, const Status& st, Box b) {
   context_for(c, st, ctx, sizeof ctx);
   if (is_countdown(c, st)) hero_countdown(cv, c, st, b);
   else if (c.big[0]) hero_metric(cv, c, st, b, ctx);
-  else if (c.nrows) hero_rows(cv, c, st, b, ctx);
+  else if (c.nrows) {
+    // Lists may run down beside Clawd's head: rows that low are narrowed instead.
+    Box tall = b;
+    tall.h += 4 * CLAWD_CELL;
+    hero_rows(cv, c, st, tall, ctx, b.y + b.h);
+  }
   else hero_standard(cv, c, st, b, ctx);
 }
 
@@ -346,7 +365,7 @@ void hero(Canvas& cv, const Card& c, const Status& st, Box b) {
 // One line per card: icon, short title, and when (or its number) on the right.
 void next_row(Canvas& cv, const Card& c, const Status& st, int top) {
   Ink mark = c.urgent ? accent_ink(st) : Ink::Black;
-  icon(cv, c.kind, M, top + 9, 18, mark);
+  card_icon(cv, c, M, top + 9, 18, mark);
   char when[40];
   if (c.at && c.at > st.now) fmt_when(st.now, c.at, when, sizeof when);
   else if (c.at) snprintf(when, sizeof when, "NOW");
@@ -366,65 +385,84 @@ void page_count(Canvas& cv, int n, int cur, int y) {
   eyebrow(cv, W - M - eyebrow_w(buf), y, buf, Ink::Black);
 }
 
-// Returns the y where the hero must stop.
-int up_next(Canvas& cv, const Digest& d, const Ranked& r, int cur, const Status& st) {
+// Clawd's pose for what is on screen. Calm cards get one of a few idle
+// looks, picked by the card id so it holds still between refreshes.
+Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st) {
+  if (st.net == Net::NeverSynced || !st.last_sync) return Mood::Thinking;
+  if (st.net == Net::Offline) return Mood::Puzzled;
+  if (!c) return Mood::Happy;
+  int urgent = 0;
+  for (int i = 0; i < r.n; i++) urgent += d.cards[r.idx[i]].urgent;
+  if (urgent >= 3) return Mood::Sweat;
+  if (c->urgent) return Mood::Alert;
+  int64_t dt = c->at ? c->at - st.now : 0;
+  switch (c->kind) {
+    case Kind::Event:
+    case Kind::Quest:
+      if (is_countdown(*c, st) && dt <= 5 * 60) return Mood::Surprised;
+      if (is_countdown(*c, st) && dt <= 15 * 60) return Mood::Busy;
+      break;
+    case Kind::Commute: return Mood::Walking;
+    case Kind::Wins: return Mood::Proud;
+    case Kind::Music: return Mood::Music;
+    case Kind::News: return Mood::Reading;
+    case Kind::Focus: return Mood::Focused;
+    case Kind::Parcel: return Mood::Happy;
+    case Kind::Brief: return st.now && local(st.now).hour < 12 ? Mood::Coffee : Mood::Wink;
+    case Kind::Claude: {
+      for (int i = 0; i < c->nrows; i++)
+        if (c->rows[i].tier == 0) return Mood::Wave;
+      return Mood::Typing;
+    }
+    case Kind::Money:
+    case Kind::Traffic:
+      if (c->delta[0] == '+') return Mood::Proud;
+      break;
+    case Kind::Weather:
+      if (c->wx == Wx::Clear) return Mood::Cool;
+      if (c->wx == Wx::Rain || c->wx == Wx::Storm) return Mood::Rainy;
+      if (c->wx == Wx::Snow) return Mood::Cold;
+      break;
+    case Kind::Chat:
+    case Kind::Mail:
+    case Kind::Review:
+      for (int i = 0; i < c->nrows; i++)
+        if (c->rows[i].tier == 0) return Mood::Busy;
+      break;
+    default: break;
+  }
+  static const Mood idle[4] = {Mood::Calm, Mood::LookLeft, Mood::LookRight, Mood::Wink};
+  uint32_t h = 2166136261u;
+  for (const char* p = c->id; *p; p++) h = (h ^ (uint8_t)*p) * 16777619u;
+  return idle[h % 4];
+}
+
+// Clawd standing on a rule at y, at the right margin.
+void small_clawd(Canvas& cv, int rule_y, Mood mood, const Status& st) {
+  int cx = W - M - clawd_w(CLAWD_CELL) - 2 * CLAWD_CELL;
+  clawd(cv, cx, rule_y - clawd_h(CLAWD_CELL), CLAWD_CELL, mood, accent_ink(st));
+}
+
+// Draws the up next list at the bottom with Clawd on its rule. Returns the y
+// where the hero must stop.
+int up_next(Canvas& cv, const Digest& d, const Ranked& r, int cur, const Status& st, Mood mood) {
   int ids[3], n = 0;
   for (int i = 1; i < r.n && n < 3; i++) ids[n++] = r.idx[(cur + i) % r.n];
-  if (!n) return DOCK_RULE - 8;
-  int top = DOCK_RULE - 8 - n * NEXT_ROW_H;
+  int top = H - 8 - n * NEXT_ROW_H;
   int head = top - 14;
-  cv.hline(M, head - 26, W - 2 * M, Ink::Black, 1);
-  eyebrow(cv, M, head, "UP NEXT", Ink::Black);
-  page_count(cv, r.n, cur, head);
-  for (int i = 0; i < n; i++) {
-    if (i) cv.dots(M + 32, top + i * NEXT_ROW_H, W - 2 * M - 32, 3, Ink::Black);
-    next_row(cv, d.cards[ids[i]], st, top + i * NEXT_ROW_H);
+  int rule = n ? head - 26 : H - 12;
+  cv.hline(M, rule, W - 2 * M, Ink::Black, 1);
+  small_clawd(cv, rule, mood, st);
+  if (n) {
+    eyebrow(cv, M, head, "UP NEXT", Ink::Black);
+    page_count(cv, r.n, cur, head);
+    for (int i = 0; i < n; i++) {
+      if (i) cv.dots(M + 32, top + i * NEXT_ROW_H, W - 2 * M - 32, 3, Ink::Black);
+      next_row(cv, d.cards[ids[i]], st, top + i * NEXT_ROW_H);
+    }
   }
-  return head - 32;
-}
-
-// ------------------------------------------------------------- Clawd's dock
-
-// What Clawd says and how it feels, from what is on screen.
-Mood dock_mood(const Card* hero_card, const Status& st) {
-  if (st.net == Net::NeverSynced || st.net == Net::Offline) return Mood::Puzzled;
-  if (!hero_card) return Mood::Happy;
-  if (hero_card->urgent) return Mood::Alert;
-  if (hero_card->kind == Kind::Wins) return Mood::Happy;
-  if (is_countdown(*hero_card, st) && hero_card->at - st.now <= 15 * 60) return Mood::Busy;
-  return Mood::Calm;
-}
-
-void dock(Canvas& cv, const Digest& d, const Status& st, const Card* hero_card) {
-  cv.hline(M, DOCK_RULE, W - 2 * M, Ink::Black, 2);
-  Mood mood = dock_mood(hero_card, st);
-  const int cell = 5;
-  int cy = H - 4 - clawd_h(cell);
-  clawd(cv, M + 2, cy, cell, mood, accent_ink(st));
-
-  char line[200];
-  if (st.net == Net::NeverSynced || !st.last_sync) {
-    snprintf(line, sizeof line, "Waiting for my first sync from C-Ink Settings.");
-  } else if (st.net == Net::Offline) {
-    char clock[16];
-    fmt_clock(st.last_sync, clock, sizeof clock);
-    snprintf(line, sizeof line, "No Wi-Fi since %s. I'm keeping the times current.", clock);
-  } else if (d.headline[0]) {
-    snprintf(line, sizeof line, "%s", d.headline);
-  } else {
-    snprintf(line, sizeof line, "Nothing else needs you right now.");
-  }
-
-  // Speech bubble with a tail pointing at Clawd.
-  int bx = M + clawd_w(cell) + 20, by = DOCK_RULE + 12, bw = W - M - bx, bh = H - 10 - by;
-  cv.round_rect(bx, by, bw, bh, 14, Ink::Black, 2);
-  int ty = cy + clawd_h(cell) / 2 - 4;
-  cv.fill(bx - 1, ty - 7, 3, 16, Ink::White);
-  cv.line(bx, ty - 8, bx - 12, ty + 2, Ink::Black, 2);
-  cv.line(bx - 12, ty + 2, bx, ty + 8, Ink::Black, 2);
-  int lines = cv.wrap(font_small, 0, 0, bw - 28, 24, 2, line, Ink::Black, true);
-  int text_y = by + bh / 2 + (lines == 1 ? 7 : -5);
-  cv.wrap(font_small, bx + 14, text_y, bw - 28, 24, 2, line, Ink::Black);
+  // Leave Clawd's height plus his mark above the rule.
+  return rule - clawd_h(CLAWD_CELL) - 4 * CLAWD_CELL - 6;
 }
 
 // ----------------------------------------------------------- other screens
@@ -505,7 +543,7 @@ void step(Canvas& cv, int n, int y, const char* title, const char* body) {
 }
 
 void screen_setup(Canvas& cv, const Status& st) {
-  clawd(cv, M, 70, 6, Mood::Happy, accent_ink(st));
+  clawd(cv, M, 70, 6, Mood::Wave, accent_ink(st));
   cv.text(font_title, M, 200, "Hi, I'm C-Ink.", Ink::Black);
   cv.wrap(font_sub, M, 244, W - 2 * M, 34, 2, "Three steps and I'll show what matters in your day.", Ink::Black);
   step(cv, 1, 350, "Get C-Ink Settings", "The small Mac / Windows app from github.com/jakehandy/c-ink.");
@@ -566,9 +604,8 @@ int render(Canvas& cv, const Digest& d, const Status& st, const View& v, uint32_
   }
   int cur = v.screen == Screen::Browse ? ((v.index % r.n) + r.n) % r.n : 0;
   const Card& c = d.cards[r.idx[cur]];
-  int hero_bottom = up_next(cv, d, r, cur, st);
+  int hero_bottom = up_next(cv, d, r, cur, st, pick_mood(d, r, &c, st));
   hero(cv, c, st, {M, HERO_Y, W - 2 * M, hero_bottom - HERO_Y});
-  dock(cv, d, st, &c);
   return r.n;
 }
 

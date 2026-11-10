@@ -113,6 +113,20 @@ pub fn build(raw: &Value, s: &Settings, now: DateTime<Local>) -> Built {
                 o.insert(to.into(), json!(v));
             }
         }
+        let src = text(&c, "src", 11).to_lowercase();
+        if !src.is_empty() && src.chars().all(|ch| ch.is_ascii_alphanumeric()) {
+            o.insert("src".into(), json!(src));
+        }
+        let wx = text(&c, "wx", 8);
+        if ["clear", "partly", "cloudy", "rain", "storm", "snow", "fog"].contains(&wx.as_str()) {
+            o.insert("wx".into(), json!(wx));
+        }
+        if let Some(sec) = c.get("sections").and_then(Value::as_array) {
+            let names: Vec<String> = sec.iter().take(3).map(|v| clean(v.as_str().unwrap_or(""), 15).to_uppercase()).collect();
+            if names.iter().any(|n| !n.is_empty()) {
+                o.insert("sec".into(), json!(names));
+            }
+        }
         let p = c.get("priority").and_then(Value::as_i64).unwrap_or(50).clamp(0, 100);
         o.insert("p".into(), json!(p));
         if c.get("urgent").and_then(Value::as_bool) == Some(true) {
@@ -174,7 +188,7 @@ pub fn build(raw: &Value, s: &Settings, now: DateTime<Local>) -> Built {
             out.sort_by_key(|r| r["tr"].as_i64().unwrap_or(1));
             if !out.is_empty() {
                 o.insert("r".into(), json!(out));
-            } else if kind == "chat" || kind == "review" || kind == "mail" {
+            } else if matches!(kind, "chat" | "review" | "mail" | "news" | "cloud" | "parcel" | "db") {
                 continue; // a list card with nothing left in it
             }
         }
@@ -238,6 +252,24 @@ mod tests {
         assert_eq!(b.dropped_private, 2);
         assert!(v["cards"][1]["at"].as_i64().unwrap() > now.timestamp());
         assert_eq!(v["cards"][2]["k"], "other");
+    }
+
+    #[test]
+    fn passes_source_weather_and_sections() {
+        let s = Settings::default();
+        let raw = json!({"headline": "", "cards": [
+            {"id": "m", "kind": "mail", "title": "Inbox", "priority": 50, "src": "gmail",
+             "sections": ["Work", "personal", "a very long section name"], "rows": [{"label": "Ana", "tier": 1}]},
+            {"id": "w", "kind": "weather", "title": "Rain at 3", "priority": 30, "wx": "rain", "src": "bad id!"},
+            {"id": "x", "kind": "weather", "title": "?", "priority": 20, "wx": "tornado"}]});
+        let v: Value = serde_json::from_slice(&build(&raw, &s, Local::now()).wire).unwrap();
+        let c = &v["cards"];
+        assert_eq!(c[0]["src"], "gmail");
+        assert_eq!(c[0]["sec"][1], "PERSONAL");
+        assert!(c[0]["sec"][2].as_str().unwrap().chars().count() <= 15);
+        assert_eq!(c[1]["wx"], "rain");
+        assert!(c[1].get("src").is_none());
+        assert!(c[2].get("wx").is_none());
     }
 
     #[test]

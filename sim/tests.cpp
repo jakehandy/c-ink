@@ -188,21 +188,23 @@ static void test_rotation() {
 }
 
 static void test_clawd_moods() {
-  // Each mood draws a different Clawd, and Clawd stays in its box.
-  uint32_t seen[6];
-  for (int m = 0; m < 6; m++) {
+  // Each mood draws a different Clawd, and Clawd stays in its box: the sprite
+  // plus 4 cells either side for props and 4 above for marks.
+  const int n = (int)Mood::Count, cell = 6, x0 = 120, y0 = 120;
+  uint32_t seen[(int)Mood::Count];
+  for (int m = 0; m < n; m++) {
     cv.clear();
-    clawd(cv, 100, 100, 6, (Mood)m, Ink::Accent);
+    clawd(cv, x0, y0, cell, (Mood)m, Ink::Accent);
     seen[m] = cv.hash();
     for (int y = 0; y < Canvas::H; y++)
       for (int x = 0; x < Canvas::W; x++)
         if (cv.get(x, y) != Ink::White) {
-          CHECK(x >= 100 && x < 100 + clawd_w(6) + 6 * 6);
-          CHECK(y >= 100 - 3 * 6 - 4 && y < 100 + clawd_h(6));
+          CHECK(x >= x0 - 4 * cell && x < x0 + clawd_w(cell) + 4 * cell);
+          CHECK(y >= y0 - 4 * cell - 4 && y < y0 + clawd_h(cell));
         }
   }
-  for (int i = 0; i < 6; i++)
-    for (int j = i + 1; j < 6; j++) CHECK(seen[i] != seen[j]);
+  for (int i = 0; i < n; i++)
+    for (int j = i + 1; j < n; j++) CHECK(seen[i] != seen[j]);
 }
 
 int main() {

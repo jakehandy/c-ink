@@ -32,7 +32,7 @@ serde_json = "1"
 serialport = { version = "4", default-features = false }
 sha2 = "0.10"
 tiny_http = "0.12"
-ureq = { version = "2", default-features = false, features = ["tls"] }
+ureq = { version = "2", default-features = false, features = ["tls", "json"] }
 which = "6"
 
 [build-dependencies]

@@ -210,6 +210,18 @@ pub fn run_digest(explicit: &str, model: &str, prompt: &str, schema: &str, allow
     structured(&out)
 }
 
+/// The morning news run: web search and fetch only, and no connectors at all
+/// (--strict-mcp-config with no config), so nothing read on the open web can
+/// reach the owner's mail, calendar or anything else private.
+pub fn run_web(explicit: &str, model: &str, prompt: &str, schema: &str) -> Result<Value> {
+    let bin = find(explicit).ok_or_else(|| anyhow!("Claude Code is not installed"))?;
+    let web = ["WebSearch".to_string(), "WebFetch".to_string()];
+    let mut c = headless(&bin, model, prompt, schema, &web);
+    c.args(["--tools", "WebSearch,WebFetch"]).arg("--strict-mcp-config");
+    let out = run(c, Duration::from_secs(300))?;
+    structured(&out)
+}
+
 fn find_gh() -> Option<PathBuf> {
     which::which("gh").ok().or_else(|| {
         ["/opt/homebrew/bin/gh", "/usr/local/bin/gh"].iter().map(PathBuf::from).find(|p| p.exists())

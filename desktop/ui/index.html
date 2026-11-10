@@ -11,7 +11,7 @@
     <div class="brand"><span class="logo"></span>C-Ink</div>
     <button data-page="today" class="active">Today</button>
     <button data-page="claude">Claude</button>
-    <button data-page="screens">Screens</button>
+    <button data-page="market">Marketplace</button>
     <button data-page="device">Device</button>
     <button data-page="privacy">Privacy</button>
     <button data-page="away">Away mode</button>
@@ -65,30 +65,34 @@
         <p class="hint">A line or two that helps Claude judge what matters, like your role and what you are focused on this month.</p>
         <textarea id="about" rows="3" placeholder="I run product at a 20-person startup. This month is all about the launch."></textarea>
       </div>
-      <div class="card">
-        <h3>Commute</h3>
-        <p class="hint">For the Commute screen: where you usually start your day and how you get around. Claude estimates when to leave from each meeting's location. A neighborhood is enough. It is only sent to Claude, with the digest prompt.</p>
-        <input id="commute-from" type="text" placeholder="Home in Oakland, near Lake Merritt" />
-        <div class="row">
-          <select id="commute-mode">
-            <option value="drive">Drive</option>
-            <option value="transit">Transit</option>
-            <option value="walk">Walk</option>
-            <option value="bike">Bike</option>
-          </select>
-          <label>Buffer <input id="commute-buffer" type="number" min="0" max="60" step="5" style="width:4.5em" /> min</label>
-        </div>
-      </div>
     </section>
 
-    <!-- SCREENS -->
-    <section id="page-screens" class="page">
-      <header><div><h1>Screens</h1>
-        <p class="sub">Pick what can show up. Claude decides what is most relevant; your TICKEY re-ranks it through the day, even offline.</p></div>
+    <!-- MARKETPLACE -->
+    <section id="page-market" class="page">
+      <header><div><h1>Marketplace</h1>
+        <p class="sub">Connect a source, then choose its screens. Every screen has a full view and a row in Up next, and each one can be switched off on its own.</p></div>
         <button id="recheck">Recheck connections</button></header>
-      <div id="screen-list" class="list"></div>
-      <p class="hint">Missing a service? Add it at <a href="#" data-open="https://claude.ai/settings/connectors">claude.ai/settings/connectors</a>, then recheck.</p>
+      <div class="market-bar">
+        <div class="seg" id="market-filter">
+          <button data-f="all" class="on">All</button>
+          <button data-f="on">Connected</button>
+          <button data-f="off">Not connected</button>
+        </div>
+        <span class="hint" id="market-count"></span>
+      </div>
+      <div id="market" class="market"></div>
     </section>
+
+    <dialog id="sheet" class="sheet">
+      <div class="sheet-head">
+        <span class="mark big" id="sheet-icon"></span>
+        <div class="grow"><h2 id="sheet-name"></h2><div class="hint" id="sheet-blurb"></div></div>
+        <button class="ghost close" id="sheet-close" title="Close">×</button>
+      </div>
+      <div id="sheet-connect"></div>
+      <h4>Screens</h4>
+      <div id="sheet-screens" class="list"></div>
+    </dialog>
 
     <!-- DEVICE -->
     <section id="page-device" class="page">

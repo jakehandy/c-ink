@@ -36,6 +36,8 @@ pub struct Status {
 #[derive(Default)]
 struct State {
     status: Status,
+    /// Claude's last good answer, reused with fresh built-in cards when a run fails.
+    last_raw: Option<serde_json::Value>,
     wire: Option<Vec<u8>>,
     etag: String,
     sealed: HashMap<String, (String, Vec<u8>)>, // device id -> (etag, blob)
@@ -151,11 +153,22 @@ impl Bridge {
             }
         }
         let s = self.settings.read().clone();
+        let now_l = Local::now();
+        let extra = self.builtin_cards(&s, now_l);
         let has_github = s.tools.iter().any(|t| t.to_lowercase().contains("github"));
         let gh = if s.enabled("review") && !has_github { claude::gh_context() } else { None };
-        let now_l = Local::now();
-        let p = prompt::build(&s, now_l, &s.tools, gh.as_deref());
-        let raw = claude::run_digest(&s.claude_path, &s.model, &p, prompt::SCHEMA, &s.tools)?;
+        let p = prompt::build(&s, now_l, &s.tools, gh.as_deref(), &extra);
+        let (mut raw, err) = match claude::run_digest(&s.claude_path, &s.model, &p, prompt::SCHEMA, &s.tools) {
+            Ok(r) => {
+                self.state.lock().last_raw = Some(r.clone());
+                (r, None)
+            }
+            Err(e) => match self.state.lock().last_raw.clone() {
+                Some(r) if !extra.is_empty() => (r, Some(e)),
+                _ => return Err(e),
+            },
+        };
+        merge_builtin(&mut raw, extra);
         let built = digest::build(&raw, &s, Local::now());
         let _ = fs::create_dir_all(Settings::dir());
         let _ = fs::write(last_path(), &built.wire);
@@ -177,7 +190,54 @@ impl Bridge {
             });
             self.state.lock().status.relay_ok = Some(ok);
         }
-        Ok(())
+        match err {
+            Some(e) => Err(e.context("Claude run failed, so only the built-in screens were refreshed")),
+            None => Ok(()),
+        }
+    }
+
+    /// Screens the bridge makes itself, without Claude: weather, Claude Code,
+    /// Cloudflare alerts, and the cached morning news (researched once a morning).
+    pub fn builtin_cards(&self, s: &Settings, now: chrono::DateTime<Local>) -> Vec<serde_json::Value> {
+        let mut out = vec![];
+        if s.enabled("weather") && !s.weather_location.trim().is_empty() {
+            match self.weather_card(s, now) {
+                Ok(c) => out.push(c),
+                Err(e) => log::warn!("weather: {e:#}"),
+            }
+        }
+        if s.enabled("claude") {
+            out.extend(crate::claude_usage::build(now));
+        }
+        if s.enabled("cloud") && !s.cloudflare_token.is_empty() {
+            match crate::cloudflare::build(&s.cloudflare_token, &s.cloudflare_account, now) {
+                Ok(c) => out.extend(c),
+                Err(e) => log::warn!("cloudflare: {e:#}"),
+            }
+        }
+        if s.enabled("news") {
+            match crate::news::get(s, now) {
+                Ok(c) => out.extend(c),
+                Err(e) => log::warn!("news: {e:#}"),
+            }
+        }
+        out
+    }
+
+    fn weather_card(&self, s: &Settings, now: chrono::DateTime<Local>) -> Result<serde_json::Value> {
+        let q = s.weather_location.trim();
+        let place = match &s.weather_place {
+            Some(p) if p.query == q => p.clone(),
+            _ => {
+                let p = crate::weather::geocode(q)?;
+                let mut w = self.settings.write();
+                w.weather_place = Some(p.clone());
+                let _ = w.save();
+                p
+            }
+        };
+        let v = crate::weather::fetch(&place, s.weather_fahrenheit)?;
+        crate::weather::card(&v, &place, now)
     }
 
     /// The digest sealed for one device, cached until the next run.
@@ -258,6 +318,21 @@ impl Bridge {
         self.update_settings(s)?;
         Ok(d)
     }
+}
+
+/// Adds the bridge's own cards to Claude's answer, replacing any card Claude
+/// made for the same screen.
+fn merge_builtin(raw: &mut serde_json::Value, extra: Vec<serde_json::Value>) {
+    let kinds: Vec<String> = extra.iter().filter_map(|c| c["kind"].as_str().map(str::to_string)).collect();
+    let mut cards: Vec<serde_json::Value> = raw["cards"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|c| !crate::kinds::BUILTIN.contains(&c["kind"].as_str().unwrap_or("")) && !kinds.iter().any(|k| c["kind"] == k.as_str()))
+        .collect();
+    cards.extend(extra);
+    raw["cards"] = serde_json::Value::Array(cards);
 }
 
 pub fn host_name() -> String {

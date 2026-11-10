@@ -8,10 +8,12 @@ namespace cink {
 
 static const char* const kKeys[] = {"event", "review", "chat",  "mail",  "task",    "ship", "money",
                                     "music", "quest",  "focus", "brief", "doc",     "other",
-                                    "traffic", "db",   "commute", "wins"};
+                                    "traffic", "db",   "commute", "wins",
+                                    "news",  "weather", "claude", "cloud", "parcel"};
 static const char* const kLabels[] = {"CALENDAR", "REVIEW", "SLACK", "INBOX", "LINEAR",  "SHIP",  "STRIPE",
                                       "MUSIC",    "QUEST",  "FOCUS", "BRIEF", "DOCS",    "NOTE",
-                                      "TRAFFIC",  "DATABASE", "COMMUTE", "THIS WEEK"};
+                                      "TRAFFIC",  "DATABASE", "COMMUTE", "THIS WEEK",
+                                      "NEWS",     "WEATHER", "CLAUDE CODE", "CLOUDFLARE", "DELIVERIES"};
 static_assert(sizeof kKeys / sizeof kKeys[0] == (size_t)Kind::Count, "kind keys");
 static_assert(sizeof kLabels / sizeof kLabels[0] == (size_t)Kind::Count, "kind labels");
 
@@ -22,6 +24,13 @@ Kind kind_from_key(const char* s) {
   for (int i = 0; i < (int)Kind::Count; i++)
     if (strcmp(s, kKeys[i]) == 0) return (Kind)i;
   return Kind::Other;
+}
+
+Wx wx_from_key(const char* s) {
+  static const char* const k[] = {"", "clear", "partly", "cloudy", "rain", "storm", "snow", "fog"};
+  for (int i = 1; i < 8; i++)
+    if (!strcmp(s, k[i])) return (Wx)i;
+  return Wx::None;
 }
 
 static int clamp(int64_t v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : (int)v; }
@@ -51,7 +60,7 @@ static void parse_card(Json& j, Card& c) {
   while (j.obj_next(key, sizeof key)) {
     int64_t n;
     if (!strcmp(key, "id")) j.str(c.id, sizeof c.id);
-    else if (!strcmp(key, "k")) { char k[12]; if (j.str(k, sizeof k)) c.kind = kind_from_key(k); }
+    else if (!strcmp(key, "k")) { char k[16]; if (j.str(k, sizeof k)) c.kind = kind_from_key(k); }
     else if (!strcmp(key, "t")) j.str(c.title, sizeof c.title);
     else if (!strcmp(key, "sh")) j.str(c.shrt, sizeof c.shrt);
     else if (!strcmp(key, "s")) j.str(c.subtitle, sizeof c.subtitle);
@@ -64,6 +73,16 @@ static void parse_card(Json& j, Card& c) {
     else if (!strcmp(key, "st")) { if (j.null()) c.start = 0; else j.i64(c.start); }
     else if (!strcmp(key, "en")) { if (j.null()) c.end = 0; else j.i64(c.end); }
     else if (!strcmp(key, "at")) { if (j.null()) c.at = 0; else j.i64(c.at); }
+    else if (!strcmp(key, "src")) j.str(c.src, sizeof c.src);
+    else if (!strcmp(key, "wx")) { char w[12]; if (j.str(w, sizeof w)) c.wx = wx_from_key(w); }
+    else if (!strcmp(key, "sec")) {
+      int i = 0;
+      if (j.arr_begin())
+        while (j.arr_next()) {
+          if (i < 3) j.str(c.sec[i++], sizeof c.sec[0]);
+          else j.skip();
+        }
+    }
     else if (!strcmp(key, "sp")) {
       if (j.arr_begin())
         while (j.arr_next()) {

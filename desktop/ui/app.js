@@ -169,40 +169,190 @@ $$("#model-seg button").forEach((b) =>
   })
 );
 $("#about").oninput = (e) => { settings.about = e.target.value; save(); };
-$("#commute-from").oninput = (e) => { settings.commute_from = e.target.value; save(); };
-$("#commute-mode").onchange = (e) => { settings.commute_mode = e.target.value; save(); };
-$("#commute-buffer").oninput = (e) => {
-  const n = parseInt(e.target.value, 10);
-  if (n >= 0 && n <= 60) { settings.commute_buffer_min = n; save(); }
-};
+// ------------------------------------------------------------ marketplace
+let marketFilter = "all";
+const CONNECTORS_URL = "https://claude.ai/settings/connectors";
+const mark = (icon, big) => el("span", { class: "mark" + (big ? " big" : ""), style: `--icon: url(icons/${icon || "claude"}.svg)` });
+const src = (id) => state.sources.find((s) => s.id === id);
 
-// ---------------------------------------------------------------- screens
-function renderScreens() {
-  const list = $("#screen-list");
-  list.replaceChildren(
-    ...state.screens.map((s) => {
-      let pill;
-      if (s.derived) pill = el("span", { class: "pill" }, "Built from the others");
-      else if (s.connected.length) pill = el("span", { class: "pill ok" }, s.connected.join(", "));
-      else if (s.gh_fallback) pill = el("span", { class: "pill ok" }, "GitHub CLI");
-      else pill = el("a", { class: "pill warn", href: "#", "data-open": "https://claude.ai/settings/connectors" }, `Connect ${s.needs[0]}`);
-      const box = el("input", { type: "checkbox", checked: settings.screens[s.key] });
-      box.onchange = () => { settings.screens[s.key] = box.checked; save(); };
-      return el("div", { class: "item" },
-        el("div", { class: "grow" }, el("div", { class: "name" }, s.name), el("div", { class: "blurb" }, s.blurb)),
-        pill,
-        el("label", { class: "switch" }, box, el("span")));
+function stateLabel(s) {
+  if (s.id === "gmail" && s.accounts > 1) return `${s.accounts} accounts`;
+  if (s.id === "cloudflare" && s.connected) return settings.cloudflare_account_name || "Connected";
+  if (s.id === "weather" && s.connected) return settings.weather_place?.name || "Set";
+  if (s.id === "github" && s.connected && !s.accounts) return "GitHub CLI";
+  if (s.how === "local" || s.id === "news") return s.connected ? "Ready" : "Not found";
+  return s.connected ? "Connected" : s.how === "builtin" ? "Set up" : "Connect";
+}
+
+function renderMarket() {
+  const list = state.sources.filter((s) => marketFilter === "all" || (marketFilter === "on") === s.connected);
+  const on = state.sources.filter((s) => s.connected).length;
+  $("#market-count").textContent = `${on} of ${state.sources.length} connected`;
+  $("#market").replaceChildren(
+    ...list.map((s) => {
+      const live = s.screens.filter((k) => settings.screens[k.key]).length;
+      return el("button", { class: "tile" + (s.connected ? "" : " off"), onclick: () => openSheet(s.id) },
+        el("div", { class: "top" }, mark(s.icon), el("span", { class: "name" }, s.name)),
+        el("div", { class: "blurb" }, s.blurb),
+        el("div", { class: "foot" },
+          el("span", { class: "state" + (s.connected ? " ok" : "") }, stateLabel(s)),
+          el("span", { class: "count" }, `${live}/${s.screens.length} screen${s.screens.length === 1 ? "" : "s"} on`)));
     })
   );
 }
-async function recheck() {
-  await busy($("#recheck"), "Checking...", async () => {
+$$("#market-filter button").forEach((b) =>
+  b.addEventListener("click", () => {
+    $$("#market-filter button").forEach((x) => x.classList.toggle("on", x === b));
+    marketFilter = b.dataset.f;
+    renderMarket();
+  })
+);
+
+function screenToggle(k) {
+  const box = el("input", { type: "checkbox", checked: settings.screens[k.key] });
+  box.onchange = () => { settings.screens[k.key] = box.checked; save(); renderMarket(); };
+  return el("div", { class: "item" },
+    el("div", { class: "grow" },
+      el("div", { class: "name" }, k.name, " ", k.shared ? el("span", { class: "tag" }, "shared") : ""),
+      el("div", { class: "blurb" }, k.blurb)),
+    el("label", { class: "switch", title: "Show this screen and its Up next row" }, box, el("span")));
+}
+
+function connectorFlow(s, steps) {
+  const ok = s.connected;
+  return el("div", { class: "connect-box" },
+    el("ol", { class: "steps" }, ...steps.map((t) => el("li", {}, t))),
+    el("div", { class: "actions" },
+      el("button", { class: ok ? "" : "primary", "data-open": CONNECTORS_URL }, ok ? "Manage on claude.ai" : `Connect ${s.name} on claude.ai`),
+      el("button", { onclick: async (e) => { await recheck(e.target); openSheet(s.id); } }, ok ? "Recheck" : "I connected it")),
+    el("div", { class: "result" }, el("span", { class: "state" + (ok ? " ok" : "") }, ok ? `Claude Code can see ${s.name}${s.accounts > 1 ? ` (${s.accounts} accounts)` : ""}.` : "Not visible to Claude Code yet.")));
+}
+
+const FLOWS = {
+  gmail: (s) => connectorFlow(s, ["Open claude.ai connectors and add Gmail.", "For each extra inbox, add Gmail again and sign in with that account. Each one shows up as its own section on the Inbox screen.", "Come back and recheck."]),
+  shop: (s) => connectorFlow(s, ["Open claude.ai connectors, search for Shop and connect it with the Shop app's sign-in.", "Come back and recheck. The Deliveries screen uses Shop's orders and tracking."]),
+  link: () => {
+    const g = src("gmail");
+    return el("div", { class: "connect-box" },
+      el("p", { class: "hint" }, "Link has no connector yet, so C-Ink reads Link's order and shipping emails from your Gmail instead. Nothing else to set up as long as the inbox Link emails is connected."),
+      el("div", { class: "result" }, el("span", { class: "state" + (g.connected ? " ok" : "") }, g.connected ? "Gmail is connected, so Link orders will show up in Deliveries." : "Connect Gmail first.")),
+      g.connected ? "" : el("div", { class: "actions" }, el("button", { class: "primary", onclick: () => openSheet("gmail") }, "Set up Gmail")));
+  },
+  github: (s) => connectorFlow(s, ["Connect GitHub on claude.ai, or just sign in to the gh command line tool on this computer: C-Ink uses it when there is no connector.", "Come back and recheck."]),
+  gcal: (s) => {
+    const box = connectorFlow(s, ["Connect Google Calendar on claude.ai (one per calendar account).", "Come back and recheck."]);
+    const from = el("input", { placeholder: "Home in the Mission, SF", value: settings.commute_from || "" });
+    from.oninput = () => { settings.commute_from = from.value; save(); };
+    const mode = el("select", {}, ...["drive", "transit", "walk", "bike"].map((m) => el("option", { value: m }, m[0].toUpperCase() + m.slice(1))));
+    mode.value = settings.commute_mode || "drive";
+    mode.onchange = () => { settings.commute_mode = mode.value; save(); };
+    const buf = el("input", { type: "number", min: 0, max: 60, step: 5, value: settings.commute_buffer_min ?? 5, style: "width:4.5em" });
+    buf.oninput = () => { const n = parseInt(buf.value, 10); if (n >= 0 && n <= 60) { settings.commute_buffer_min = n; save(); } };
+    return el("div", {}, box, el("h4", {}, "Commute"),
+      el("div", { class: "connect-box" },
+        el("p", { class: "hint" }, "Where you usually start the day and how you get around. A neighborhood is enough; it only goes to Claude with the digest prompt."),
+        el("div", { class: "row" }, from),
+        el("div", { class: "row" }, mode, el("label", { class: "check" }, "Buffer ", buf, " min"))));
+  },
+  weather: () => {
+    const q = el("input", { placeholder: "Zip code, city, or lat,lon", value: settings.weather_location || "" });
+    let f = settings.weather_fahrenheit !== false;
+    const unit = el("div", { class: "seg" },
+      ...[["°F", true], ["°C", false]].map(([l, v]) => {
+        const b = el("button", { class: f === v ? "on" : "" }, l);
+        b.onclick = () => { f = v; unit.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); };
+        return b;
+      }));
+    const out = el("div", { class: "result" }, settings.weather_place ? el("span", { class: "state ok" }, `Showing weather for ${settings.weather_place.name}.`) : "");
+    const go = el("button", { class: "primary" }, "Look up");
+    go.onclick = () => busy(go, "Looking up...", async () => {
+      try {
+        const r = await invoke("weather_lookup", { query: q.value, fahrenheit: f });
+        Object.assign(settings, { weather_location: q.value.trim(), weather_place: r.place, weather_fahrenheit: f });
+        out.replaceChildren(el("span", { class: "state ok" }, `${r.place.name}: ${r.card.big} and ${r.card.short.split(" ").slice(1).join(" ")}. ${r.card.title}.`));
+        await refreshState(); renderMarket(); renderPreview();
+      } catch (e) { out.replaceChildren(el("span", { class: "state" }, String(e))); }
+    });
+    q.onkeydown = (e) => { if (e.key === "Enter") go.click(); };
+    return el("div", { class: "connect-box" },
+      el("p", { class: "hint" }, "Forecasts come from Open-Meteo, free and with no account. Only this place is sent to it, and Claude is not involved, so weather costs no Claude run."),
+      el("div", { class: "row" }, q),
+      el("div", { class: "row" }, unit, go), out);
+  },
+  cloudflare: (s) => {
+    const tok = el("input", { type: "password", placeholder: "Paste the API token", value: settings.cloudflare_token || "" });
+    const acct = el("input", { placeholder: "Account ID (optional, found automatically)", value: settings.cloudflare_account || "" });
+    const out = el("div", { class: "result" }, s.connected ? el("span", { class: "state ok" }, `Connected to ${settings.cloudflare_account_name || settings.cloudflare_account}.`) : "");
+    const go = el("button", { class: "primary" }, s.connected ? "Save" : "Connect");
+    go.onclick = () => busy(go, "Checking...", async () => {
+      try {
+        const r = await invoke("cloudflare_connect", { token: tok.value, account: acct.value });
+        Object.assign(settings, { cloudflare_token: tok.value.trim(), cloudflare_account: r.account, cloudflare_account_name: r.name });
+        acct.value = r.account;
+        out.replaceChildren(el("span", { class: "state ok" }, `Connected to ${r.name || r.account}. ${r.alerts == null ? "Could not read alert history: check the Notifications permission." : `${r.alerts} alert${r.alerts === 1 ? "" : "s"} in the last day.`}`));
+        await refreshState(); renderMarket();
+      } catch (e) { out.replaceChildren(el("span", { class: "state" }, String(e))); }
+    });
+    const off = el("button", { class: "ghost", onclick: async () => {
+      await invoke("cloudflare_disconnect");
+      Object.assign(settings, { cloudflare_token: "", cloudflare_account: "", cloudflare_account_name: "" });
+      await refreshState(); renderMarket(); openSheet("cloudflare");
+    } }, "Disconnect");
+    return el("div", { class: "connect-box" },
+      el("ol", { class: "steps" },
+        el("li", {}, "Create a custom API token: ", el("a", { href: "#", "data-open": "https://dash.cloudflare.com/profile/api-tokens" }, "dash.cloudflare.com/profile/api-tokens"), "."),
+        el("li", {}, "Give it Account > Notifications > Read and Account > Account Settings > Read. Nothing else; C-Ink only reads."),
+        el("li", {}, "Paste it here. It is stored only in C-Ink's settings file on this computer.")),
+      el("div", { class: "row" }, tok), el("div", { class: "row" }, acct),
+      el("div", { class: "actions" }, go, s.connected ? off : ""), out);
+  },
+  news: () => {
+    const t = el("textarea", { rows: 3, placeholder: "Local news for my zip code, progressive political news, and general world news" }, settings.news_prompt || "");
+    t.oninput = () => { settings.news_prompt = t.value; save(); };
+    return el("div", { class: "connect-box" },
+      el("p", { class: "hint" }, "Tell Claude what your morning news should cover, in your own words. Up to three sections. Claude researches it on the web once a morning, between 5 and 11 AM, and the card stays until noon."),
+      t,
+      el("p", { class: "hint", style: "margin:10px 0 0" }, "That run can only search and read the web. None of your connectors are loaded in it, so nothing from the open web can reach your mail or calendar."));
+  },
+  claudecode: (s) => {
+    const out = el("div", { class: "result" });
+    const go = el("button", {}, "Show what it sees");
+    go.onclick = () => busy(go, "Reading...", async () => {
+      const c = await invoke("claude_code_preview");
+      if (!c) return out.replaceChildren("No Claude Code activity in the last day.");
+      out.replaceChildren(el("b", {}, c.title), el("div", { class: "hint" }, c.subtitle || c.meta || ""),
+        el("ul", { class: "rows" }, ...(c.rows || []).map((r) => el("li", {}, el("b", {}, r.label), el("span", {}, r.detail)))));
+    });
+    return el("div", { class: "connect-box" },
+      el("p", { class: "hint" }, "C-Ink reads the session logs Claude Code keeps on this computer for timing, token counts, the project folder and branch, plus how many commits you made today. It never reads what was said in a session, and none of it is sent to Claude."),
+      el("div", { class: "result" }, el("span", { class: "state" + (s.connected ? " ok" : "") }, s.connected ? "Found Claude Code sessions on this computer." : "No Claude Code sessions found yet.")),
+      el("div", { class: "actions" }, go), out);
+  },
+  claude: () => el("div", { class: "connect-box" }, el("p", { class: "hint", style: "margin:0" }, "Nothing to connect. Claude builds these from everything else you have connected.")),
+};
+
+function openSheet(id) {
+  const s = src(id);
+  if (!s) return;
+  $("#sheet-icon").replaceWith(Object.assign(mark(s.icon, true), { id: "sheet-icon" }));
+  $("#sheet-name").textContent = s.name;
+  $("#sheet-blurb").textContent = s.blurb;
+  const flow = FLOWS[id] || ((x) => connectorFlow(x, [`Open claude.ai connectors and connect ${x.name}.`, "Come back and recheck."]));
+  $("#sheet-connect").replaceChildren(flow(s));
+  $("#sheet-screens").replaceChildren(...s.screens.map(screenToggle));
+  if (!$("#sheet").open) $("#sheet").showModal();
+}
+$("#sheet-close").onclick = () => $("#sheet").close();
+$("#sheet").addEventListener("click", (e) => { if (e.target === $("#sheet")) $("#sheet").close(); });
+
+async function recheck(btn = $("#recheck")) {
+  await busy(btn, "Checking...", async () => {
     try { await invoke("refresh_connections"); } catch (e) { alert("Could not check connections: " + e); }
     await refreshState();
-    renderScreens();
+    renderMarket();
   });
 }
-$("#recheck").onclick = recheck;
+$("#recheck").onclick = () => recheck();
 
 // ----------------------------------------------------------------- device
 const hours = [...Array(24).keys()];
@@ -435,14 +585,11 @@ async function boot() {
   await refreshState();
   $$("#model-seg button").forEach((x) => x.classList.toggle("on", x.dataset.model === settings.model));
   $("#about").value = settings.about;
-  $("#commute-from").value = settings.commute_from || "";
-  $("#commute-mode").value = settings.commute_mode || "drive";
-  $("#commute-buffer").value = settings.commute_buffer_min ?? 5;
   if (settings.board_profile) hwShow(settings.board_profile);
   $("#instructions").value = settings.instructions;
   chips("#private", "private_terms", "Add a name or topic, press Enter");
   chips("#vips", "vips", "Add a person, press Enter");
-  renderScreens();
+  renderMarket();
   renderDeviceSettings();
   renderAway();
   renderPreview();

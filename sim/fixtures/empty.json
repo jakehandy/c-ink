@@ -1,0 +1,16 @@
+{
+ "v": 1,
+ "gen": 1794350760,
+ "hz": 1794394020,
+ "hl": "Calendar is clear until tomorrow and nobody is waiting on you.",
+ "cards": [
+  {
+   "id": "cal:standup",
+   "k": "event",
+   "p": 30,
+   "at": 1794418200,
+   "t": "Standup",
+   "st": 1794405600
+  }
+ ]
+}

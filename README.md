@@ -20,7 +20,7 @@ C-Ink has no accounts, no API keys and no servers of its own (the optional relay
 
 That is the whole integration story, and it is why C-Ink can cover twenty-odd services without shipping twenty-odd integrations:
 
-- **One sign-in.** You sign in to Claude Code once. There is no Google Cloud project, Slack app, OAuth client or API token to create per service (Cloudflare's optional read-only token is the one exception, for alerts no connector covers).
+- **One sign-in.** You sign in to Claude Code once. There is no Google Cloud project, Slack app, OAuth client or API token to create per service (Cloudflare's optional read-only token is the one exception, for alerts and site traffic no connector covers).
 - **Connect once, use everywhere.** A connector you add on claude.ai works in Claude, in Claude Code and on your badge at the same time. Add a second Gmail or Google Drive account and the Inbox and Docs screens pick it up on the next run.
 - **Nothing new to pay for.** Runs come out of your existing Claude plan. There is no C-Ink subscription and no hosted backend holding your data.
 - **Your data stays between you and Claude.** C-Ink allows Claude Code only read-only tools, runs it on your own computer, and sends the device a digest encrypted for that device alone.
@@ -73,7 +73,7 @@ Every source you connect feeds one or more screens. Each screen has a full view,
 | This week's wins | GitHub, Linear, Vercel, ONCE | Merged PRs, closed issues and releases, from Thursday afternoon on |
 | Linear | Linear | Issues due soon or blocking someone |
 | Ship status | Vercel | Failed production deploys and error spikes |
-| Traffic | Vercel Web Analytics | Visitors today against a usual day, when it is unusual |
+| Traffic | Vercel Web Analytics, Cloudflare (API token) | Page views today against the same day last week, top page and referrer |
 | Cloudflare alerts | Cloudflare (API token) | Notifications from the last day: Workers errors, origin and DDoS alerts, certificates |
 | Database health | Supabase | Tables with row level security off, advisor warnings, paused projects |
 | Revenue | Stripe | Today against a usual day for that weekday, with a sparkline |
@@ -88,7 +88,7 @@ Every source you connect feeds one or more screens. Each screen has a full view,
 
 **ONCE** ([once.app](https://once.app)) is a music release platform: artists and labels use it to send songs and albums to Spotify, Apple Music and the other stores, manage their catalog, and see how each release performs. **Tavern** keeps a tabletop roleplaying group's campaign in one place: dated sessions with everyone's notes, a wiki of the people and places in it, maps, character sheets with live hit points and spell slots, and a combat tracker. If you use neither, leave them off; nothing else depends on them.
 
-Three screens never cost a Claude run: **Weather** comes straight from Open-Meteo (only the place you set is sent there), **Cloudflare alerts** from Cloudflare's notification history with a read-only token, and **Claude Code** from the session logs on your computer. That last one reads timing, token counts, folder and branch names only, never what was said, and none of it goes to Claude. **Morning news** is one extra Claude run a morning that can only search and read the web: no connectors are loaded in it, so nothing on the open web can reach your mail or calendar.
+Four screens never cost a Claude run: **Weather** comes straight from Open-Meteo (only the place you set is sent there), **Cloudflare alerts and traffic** from Cloudflare's notification history and zone analytics with a read-only token, and **Claude Code** from the session logs on your computer. That last one reads timing, token counts, folder and branch names only, never what was said, and none of it goes to Claude. **Morning news** is one extra Claude run a morning that can only search and read the web: no connectors are loaded in it, so nothing on the open web can reach your mail or calendar.
 
 Buttons: **Up/Down** page through every card in Up next, **Back** returns to the top card (press again for device info), **hold Back** to sync now. Leave the buttons alone for 20 seconds, or let it go back to sleep, and it returns to whatever is most relevant at that moment. If you wear it the other way up, tick **Orientation** in Settings: the picture turns 180° and Up and Down swap.
 
@@ -110,7 +110,7 @@ C-Ink Settings lists every source in a small Marketplace, grouped by type (calen
 </p>
 
 - **claude.ai connectors** (Google Calendar, Gmail, Microsoft 365 for Outlook, Teams and SharePoint, Slack, Intercom, GitHub, Linear, Vercel, Supabase, Stripe, Shop, ONCE, Tavern, Google Drive): connect on claude.ai, then **Recheck**. Add Gmail or Google Drive once per account for multiple accounts.
-- **Built in:** Weather takes a zip code, city or coordinates. Cloudflare takes a read-only API token (Notifications: Read, Account Settings: Read). News takes a sentence describing what you want, for example *"Local news for my zip code, progressive political news, and general news."*
+- **Built in:** Weather takes a zip code, city or coordinates. Cloudflare takes a read-only API token (Notifications: Read and Account Settings: Read for alerts, plus Zone: Read and Analytics: Read for Traffic); pick the site Traffic follows, or let it follow the busiest one. News takes a sentence describing what you want, for example *"Local news for my zip code, progressive political news, and general news."*
 - **On this computer:** Claude Code is found automatically.
 
 ## Repo layout

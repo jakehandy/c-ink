@@ -122,14 +122,26 @@ async fn cloudflare_connect(app: State<'_, App>, token: String, account: String)
     blocking(move || {
         let (id, name) = cloudflare::verify(&token, &account)?;
         let alerts = cloudflare::history(&token, &id, chrono::Local::now()).map(|a| a.len()).ok();
+        let zones = cloudflare::zones(&token, &id).ok().map(zone_list);
         let mut s = b.settings.read().clone();
         s.cloudflare_token = token.trim().to_string();
         s.cloudflare_account = id.clone();
         s.cloudflare_account_name = name.clone();
         b.update_settings(s)?;
-        Ok(json!({"account": id, "name": name, "alerts": alerts}))
+        Ok(json!({"account": id, "name": name, "alerts": alerts, "zones": zones}))
     })
     .await
+}
+
+fn zone_list(z: Vec<(String, String)>) -> Value {
+    z.into_iter().map(|(id, name)| json!({"id": id, "name": name})).collect()
+}
+
+/// The sites the token can see, for the Traffic picker (None without Zone: Read).
+#[tauri::command]
+async fn cloudflare_zones(app: State<'_, App>) -> Res<Option<Value>> {
+    let s = app.bridge.settings.read().clone();
+    blocking(move || Ok(cloudflare::zones(&s.cloudflare_token, &s.cloudflare_account).ok().map(zone_list))).await
 }
 
 #[tauri::command]
@@ -138,6 +150,7 @@ fn cloudflare_disconnect(app: State<App>) -> Res<()> {
     s.cloudflare_token.clear();
     s.cloudflare_account.clear();
     s.cloudflare_account_name.clear();
+    s.cloudflare_zone.clear();
     app.bridge.update_settings(s).map_err(err)
 }
 
@@ -430,7 +443,7 @@ fn main() {
             render_preview, list_ports, setup_device, update_device, device_press, device_frame,
             device_reset, forget_device, preview_prompt, wire_digest, get_autostart, set_autostart,
             device_settings_json, device_board_send, device_board_get, device_board_reset, device_panel_test,
-            device_learn, weather_lookup, cloudflare_connect, cloudflare_disconnect, claude_code_preview
+            device_learn, weather_lookup, cloudflare_connect, cloudflare_disconnect, cloudflare_zones, claude_code_preview
         ])
         .run(tauri::generate_context!())
         .expect("error while running C-Ink Settings");

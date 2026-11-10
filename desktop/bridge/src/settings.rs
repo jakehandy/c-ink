@@ -75,10 +75,12 @@ pub struct Settings {
     pub weather_fahrenheit: bool,
     /// What the morning news screen should cover, in the owner's words.
     pub news_prompt: String,
-    /// Read-only Cloudflare API token (Account > Notifications > Read).
+    /// Read-only Cloudflare API token (Notifications, Account Settings, Zone and Analytics: Read).
     pub cloudflare_token: String,
     pub cloudflare_account: String,
     pub cloudflare_account_name: String,
+    /// The site the Traffic screen follows (zone id); empty = today's busiest.
+    pub cloudflare_zone: String,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -135,6 +137,7 @@ impl Default for Settings {
             cloudflare_token: String::new(),
             cloudflare_account: String::new(),
             cloudflare_account_name: String::new(),
+            cloudflare_zone: String::new(),
         }
     }
 }

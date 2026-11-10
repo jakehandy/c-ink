@@ -304,6 +304,21 @@ const FLOWS = {
     const tok = el("input", { type: "password", placeholder: "Paste the API token", value: settings.cloudflare_token || "" });
     const acct = el("input", { placeholder: "Account ID (optional, found automatically)", value: settings.cloudflare_account || "" });
     const out = el("div", { class: "result" }, s.connected ? el("span", { class: "state ok" }, `Connected to ${settings.cloudflare_account_name || settings.cloudflare_account}.`) : "");
+    // Which site the Traffic screen follows.
+    const zoneBox = el("div", {});
+    const fillZones = (zones) => {
+      if (zones == null) {
+        zoneBox.replaceChildren(el("p", { class: "hint" }, "Traffic needs Zone > Zone > Read and Zone > Analytics > Read on this token."));
+        return;
+      }
+      if (!zones.length) return zoneBox.replaceChildren();
+      const pick = el("select", {}, el("option", { value: "" }, "The busiest site today"),
+        ...zones.map((z) => el("option", { value: z.id }, z.name)));
+      pick.value = zones.some((z) => z.id === settings.cloudflare_zone) ? settings.cloudflare_zone : "";
+      pick.onchange = () => { settings.cloudflare_zone = pick.value; save(); };
+      zoneBox.replaceChildren(el("p", { class: "hint", style: "margin:14px 0 6px" }, "Traffic follows"), el("div", { class: "row" }, pick));
+    };
+    if (s.connected) invoke("cloudflare_zones").then(fillZones).catch(() => {});
     const go = el("button", { class: "primary" }, s.connected ? "Save" : "Connect");
     go.onclick = () => busy(go, "Checking...", async () => {
       try {
@@ -311,21 +326,22 @@ const FLOWS = {
         Object.assign(settings, { cloudflare_token: tok.value.trim(), cloudflare_account: r.account, cloudflare_account_name: r.name });
         acct.value = r.account;
         out.replaceChildren(el("span", { class: "state ok" }, `Connected to ${r.name || r.account}. ${r.alerts == null ? "Could not read alert history: check the Notifications permission." : `${r.alerts} alert${r.alerts === 1 ? "" : "s"} in the last day.`}`));
+        fillZones(r.zones);
         await refreshState(); renderMarket();
       } catch (e) { out.replaceChildren(el("span", { class: "state" }, String(e))); }
     });
     const off = el("button", { class: "ghost", onclick: async () => {
       await invoke("cloudflare_disconnect");
-      Object.assign(settings, { cloudflare_token: "", cloudflare_account: "", cloudflare_account_name: "" });
+      Object.assign(settings, { cloudflare_token: "", cloudflare_account: "", cloudflare_account_name: "", cloudflare_zone: "" });
       await refreshState(); renderMarket(); openSheet("cloudflare");
     } }, "Disconnect");
     return el("div", { class: "connect-box" },
       el("ol", { class: "steps" },
         el("li", {}, "Create a custom API token: ", el("a", { href: "#", "data-open": "https://dash.cloudflare.com/profile/api-tokens" }, "dash.cloudflare.com/profile/api-tokens"), "."),
-        el("li", {}, "Give it Account > Notifications > Read and Account > Account Settings > Read. Nothing else; C-Ink only reads."),
+        el("li", {}, "Give it Account > Notifications > Read and Account > Account Settings > Read for alerts, plus Zone > Zone > Read and Zone > Analytics > Read for the Traffic screen. Nothing else; C-Ink only reads."),
         el("li", {}, "Paste it here. It is stored only in C-Ink's settings file on this computer.")),
       el("div", { class: "row" }, tok), el("div", { class: "row" }, acct),
-      el("div", { class: "actions" }, go, s.connected ? off : ""), out);
+      el("div", { class: "actions" }, go, s.connected ? off : ""), out, zoneBox);
   },
   news: () => {
     const t = el("textarea", { rows: 3, placeholder: "Local news for my zip code, progressive political news, and general world news" }, settings.news_prompt || "");

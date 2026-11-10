@@ -33,7 +33,7 @@ pub const KINDS: &[KindInfo] = &[
     KindInfo { key: "doc", name: "Docs", blurb: "Docs shared with you or waiting on your comments, and the doc to read before your next meeting.", source: "gdrive", connectors: &["drive", "notion", "docs", "sharepoint", "microsoft"], default_on: true },
     KindInfo { key: "other", name: "Anything else", blurb: "Something important that fits no other screen.", source: "claude", connectors: &[], default_on: true },
     // Appended after "other" so the device's bit order stays stable.
-    KindInfo { key: "traffic", name: "Traffic", blurb: "Visitors today against a usual day, and where they came from.", source: "vercel", connectors: &["vercel"], default_on: true },
+    KindInfo { key: "traffic", name: "Traffic", blurb: "Visitors today against a usual day, and where they came from, from Vercel Web Analytics and Cloudflare zone analytics.", source: "vercel", connectors: &["vercel"], default_on: true },
     KindInfo { key: "db", name: "Database health", blurb: "Supabase security and performance warnings, paused projects, failing functions.", source: "supabase", connectors: &["supabase"], default_on: true },
     KindInfo { key: "commute", name: "Commute", blurb: "When to leave for your next in-person meeting, from its location and where you will be before it.", source: "gcal", connectors: &["calendar"], default_on: true },
     KindInfo { key: "wins", name: "This week's wins", blurb: "What you shipped this week: merged PRs, closed issues, releases. Shows up on Friday afternoons and quiet stretches.", source: "github", connectors: &["github", "linear", "vercel", "once"], default_on: true },
@@ -98,7 +98,7 @@ pub const SOURCES: &[SourceInfo] = &[
     SourceInfo { id: "github", category: "dev", name: "GitHub", icon: "github", blurb: "Reviews, failing CI and the week's merged work. The gh CLI works too.", connect: Connect::Connector(&["github"]), also: &[] },
     SourceInfo { id: "linear", category: "dev", name: "Linear", icon: "linear", blurb: "Issues due soon or blocking someone.", connect: Connect::Connector(&["linear"]), also: &["wins"] },
     SourceInfo { id: "vercel", category: "dev", name: "Vercel", icon: "vercel", blurb: "Failed deploys, runtime errors and traffic.", connect: Connect::Connector(&["vercel"]), also: &["wins"] },
-    SourceInfo { id: "cloudflare", category: "dev", name: "Cloudflare", icon: "cloudflare", blurb: "Account alerts and Workers errors, with a read-only API token.", connect: Connect::Builtin, also: &[] },
+    SourceInfo { id: "cloudflare", category: "dev", name: "Cloudflare", icon: "cloudflare", blurb: "Account alerts, Workers errors and site traffic, with a read-only API token.", connect: Connect::Builtin, also: &["traffic"] },
     SourceInfo { id: "supabase", category: "dev", name: "Supabase", icon: "supabase", blurb: "Security and performance advisors.", connect: Connect::Connector(&["supabase"]), also: &[] },
     SourceInfo { id: "claudecode", category: "dev", name: "Claude Code", icon: "claude", blurb: "Your Claude Code sessions on this computer. Reads timing and token counts, never your conversations.", connect: Connect::Local, also: &[] },
     SourceInfo { id: "stripe", category: "business", name: "Stripe", icon: "stripe", blurb: "Revenue today against a usual day.", connect: Connect::Connector(&["stripe"]), also: &[] },

@@ -1,0 +1,153 @@
+#!/usr/bin/env python3
+"""Writes the simulator fixtures. Everything here is invented sample data."""
+import json
+import os
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+TZ = ZoneInfo("America/Los_Angeles")
+NOW = datetime(2026, 11, 10, 14, 47, tzinfo=TZ)
+HERE = os.path.dirname(__file__)
+
+
+def t(**kw):
+    return int((NOW + timedelta(**kw)).timestamp())
+
+
+def at(day_offset, h, m=0):
+    d = (NOW + timedelta(days=day_offset)).replace(hour=h, minute=m, second=0)
+    return int(d.timestamp())
+
+
+day = {
+    "v": 1,
+    "gen": t(minutes=-2),
+    "hz": t(hours=12),
+    "hl": "Two meetings left, one fire in prod, and the rest can wait.",
+    "cards": [
+        {"id": "cal:design-review", "k": "event", "p": 70, "at": t(minutes=12), "en": t(minutes=42),
+         "t": "Design review: onboarding v2", "sh": "Design review", "s": "with Priya, Marco and Dee",
+         "b": "Priya wants a yes or no on the new pricing step. Last week's notes flagged drop-off at step 3.",
+         "m": "Google Meet  ·  30 min"},
+        {"id": "slack:triage", "k": "chat", "p": 66, "t": "Slack", "src": "slack",
+         "r": [
+             {"l": "Sam Ortiz", "d": "Wants your OK on the launch date by 4 PM", "g": "DM", "tr": 0, "u": True},
+             {"l": "#incidents", "d": "Payments latency alert, you are on call", "g": "!", "tr": 0, "u": True},
+             {"l": "#design", "d": "3 new replies on the onboarding thread", "g": "3", "tr": 1},
+             {"l": "Rita Chen", "d": "Shared the Q4 deck for comments", "g": "DM", "tr": 1},
+             {"l": "#general", "d": "Offsite RSVP closes Friday", "g": "1", "tr": 2},
+         ]},
+        {"id": "gh:queue", "k": "review", "p": 64, "t": "3 pull requests waiting on you", "sh": "3 PRs need you",
+         "r": [
+             {"l": "api #412", "d": "Rate limiter rewrite, review requested", "g": "2d", "tr": 0, "u": True},
+             {"l": "c-ink #3", "d": "Your PR: Windows build failing", "g": "CI", "tr": 0, "u": True},
+             {"l": "web #88", "d": "Checkout copy, approved by Sam", "g": "1d", "tr": 1},
+         ]},
+        {"id": "vercel:web", "k": "ship", "p": 62, "u": True, "t": "Production deploy failed", "sh": "Deploy failed",
+         "s": "web-app  ·  main  ·  since 2:27 PM",
+         "b": "Missing env STRIPE_WEBHOOK_SECRET in checkout/route.ts. The last good deploy is still serving traffic."},
+        {"id": "gmail:replies", "k": "mail", "p": 48, "t": "Inbox", "sh": "4 emails to answer", "src": "gmail",
+         "sec": ["WORK", "PERSONAL", "LABEL"],
+         "r": [
+             {"l": "Alex, Vanta", "d": "Contract redlines, wants a call by Thursday", "g": "3d", "tr": 0},
+             {"l": "Priya Shah", "d": "Needs the Q4 hiring plan before Friday", "g": "1d", "tr": 0},
+             {"l": "Landlord", "d": "Lease renewal, asks for a yes by the 15th", "g": "2d", "tr": 1},
+             {"l": "Jordan Lee", "d": "Intro to the label partnerships team", "g": "1d", "tr": 2},
+         ]},
+        {"id": "focus:pm", "k": "focus", "p": 45, "st": t(minutes=43), "en": at(0, 16, 25),
+         "t": "Free until 4:30. Finish the rate limiter review.", "sh": "Focus until 4:30",
+         "b": "It is blocking Marco and Dee, and it is the oldest thing in your queue."},
+        {"id": "linear:eng-231", "k": "task", "p": 44, "t": "ENG-231 is due tomorrow",
+         "s": "Offline sync for mobile  ·  In Progress",
+         "b": "Two sub-issues are still open. Marco is blocked on the schema decision."},
+        {"id": "cal:1on1", "k": "event", "p": 50, "at": at(0, 16, 30), "en": at(0, 17, 0),
+         "t": "1:1 with Dana", "s": "Weekly  ·  Room 4B"},
+        {"id": "stripe:today", "k": "money", "p": 40, "t": "Revenue today", "big": "$4,820",
+         "dl": "+18% vs a usual Tuesday", "s": "41 payments, 2 refunds",
+         "sp": [8, 10, 9, 12, 14, 13, 18, 22, 21, 26, 30, 29, 34, 40, 38, 44, 52, 50, 57, 63, 61, 70, 76, 82]},
+        {"id": "once:low-tide", "k": "music", "p": 35, "t": "“Low Tide” is climbing", "big": "12.4k",
+         "dl": "+31% this week", "s": "Released 6 days ago. Spotify is 72% of plays.",
+         "sp": [20, 22, 28, 35, 41, 52, 64]},
+        {"id": "tavern:s14", "k": "quest", "p": 30, "at": at(4, 19, 0), "t": "The Sunken Archive",
+         "s": "Session 14  ·  Saturday 7:00 PM",
+         "b": "Your bard is at 34/41 HP with 2 spell slots left. The party left the archivist's key with the harbor guard."},
+        {"id": "cal:standup", "k": "event", "p": 30, "at": at(1, 9, 30), "en": at(1, 9, 45), "t": "Standup",
+         "s": "Daily  ·  Zoom"},
+        {"id": "vercel:traffic", "k": "traffic", "p": 34, "t": "Launch post is pulling people in", "sh": "Traffic up",
+         "big": "8,312", "dl": "+64% vs a usual Tuesday", "s": "Top page: /blog/c-ink  ·  41% from Hacker News",
+         "sp": [5, 6, 6, 8, 9, 12, 18, 30, 44, 52, 57, 61, 66, 70, 74, 79, 83, 86]},
+        {"id": "supabase:advisors", "k": "db", "p": 52, "t": "Supabase: 2 tables open to the public",
+         "sh": "2 tables exposed",
+         "r": [
+             {"l": "public.invites", "d": "Row level security is off", "g": "RLS", "tr": 0, "u": True},
+             {"l": "public.events", "d": "Row level security is off", "g": "RLS", "tr": 0, "u": True},
+             {"l": "orders_user_idx", "d": "Unused index, 48 MB", "g": "IDX", "tr": 2},
+         ]},
+        {"id": "cal:vanta-drinks", "k": "event", "p": 55, "at": at(0, 18, 0), "en": at(0, 19, 30),
+         "t": "Drinks with the Vanta team", "sh": "Vanta drinks", "s": "with Alex and Mira",
+         "b": "Alex still wants the redlines settled. Good moment to agree on a Thursday call.",
+         "m": "Zuni Café  ·  1658 Market St"},
+        {"id": "commute:vanta-drinks", "k": "commute", "p": 55, "at": at(0, 17, 30), "st": at(0, 16, 45),
+         "en": at(0, 18, 0), "t": "Drive to Zuni Café", "sh": "Leave 5:30 for Zuni",
+         "s": "About 25 min by car from the office",
+         "b": "For drinks with the Vanta team at 6:00 PM. Street parking on Market is tight after 5; the Rose St garage is a block away.",
+         "m": "1658 Market St, San Francisco"},
+        {"id": "wins:week", "k": "wins", "p": 26, "t": "A good week so far", "sh": "Week: 14 wins",
+         "r": [
+             {"l": "9 PRs merged", "d": "Rate limiter, checkout copy, Windows CI and 6 more", "g": "9", "tr": 1},
+             {"l": "4 Linear issues done", "d": "ENG-224 offline sync shipped to beta", "g": "4", "tr": 1},
+             {"l": "“Low Tide” went live", "d": "On 6 stores via ONCE", "g": "1", "tr": 1},
+         ]},
+        {"id": "news:morning", "k": "news", "p": 38, "st": t(hours=-6), "en": at(0, 23, 0),
+         "t": "Supervisors pass the Muni budget fix", "sh": "Muni budget passes", "s": "Morning news  ·  7:02 AM",
+         "sec": ["LOCAL", "POLITICS", "WORLD"],
+         "r": [
+             {"l": "Board of Supes", "d": "Closes Muni's gap without cutting lines", "tr": 0},
+             {"l": "Housing", "d": "Mission rezoning gets a final vote Dec 2", "tr": 0},
+             {"l": "Child tax credit", "d": "Senate bill to restore it clears committee", "tr": 1},
+             {"l": "Climate talks", "d": "COP31 opens with a new methane pledge", "tr": 2},
+         ]},
+        {"id": "weather:now", "k": "weather", "p": 36, "wx": "partly", "t": "Rain likely from 6 PM",
+         "sh": "61° partly cloudy", "big": "61°", "dl": "High 64°  ·  Low 52°",
+         "s": "Feels like 59°  ·  San Francisco, CA", "b": "70% chance by then. Dry until around 6 PM.",
+         "sp": [61, 62, 63, 63, 62, 60, 58, 57, 56, 55, 54, 54]},
+        {"id": "claude:code", "k": "claude", "p": 58, "src": "claude", "t": "2 Claude Code sessions waiting on you",
+         "sh": "2 waiting, 1 need OK", "s": "14 commits across 3 projects today", "m": "4.1M tokens today",
+         "sec": ["NEEDS YOU", "YOUR TURN", "TODAY"],
+         "r": [
+             {"l": "api rate-limiter", "d": "Waiting on your OK since 2:31 PM", "g": "OK", "tr": 0, "u": True},
+             {"l": "c-ink weather", "d": "Finished at 2:12 PM, your turn", "g": "6", "tr": 1},
+             {"l": "web", "d": "Checkout copy tweaks", "g": "3", "tr": 2},
+         ]},
+        {"id": "cloud:alerts", "k": "cloud", "p": 46, "src": "cloudflare", "t": "3 Cloudflare alerts today",
+         "sh": "3 alerts", "s": "Latest at 1:58 PM", "sec": ["DOWN", "WATCH", "FYI"],
+         "r": [
+             {"l": "Workers errors", "d": "api-gateway error rate over 5%, 1:58 PM", "g": "2", "tr": 1},
+             {"l": "Certificate", "d": "shop.example.com renews in 6 days, 9:00 AM", "g": "SSL", "tr": 1},
+             {"l": "Usage", "d": "Workers requests at 80% of plan, 6:10 AM", "tr": 2},
+         ]},
+        {"id": "parcel:today", "k": "parcel", "p": 40, "src": "shop", "t": "Deliveries", "sh": "2 arriving today",
+         "s": "2 today, 1 delayed", "sec": ["TODAY", "TOMORROW", "ON THE WAY"],
+         "r": [
+             {"l": "Aesop", "d": "Hand wash refill, arriving today by 8 PM", "tr": 0},
+             {"l": "Bellroy", "d": "Tech kit, out for delivery", "tr": 0},
+             {"l": "Keychron", "d": "Delayed, now Thursday (paid with Link)", "g": "!", "tr": 1, "u": True},
+             {"l": "Uniqlo", "d": "In transit, Friday", "tr": 2},
+         ]},
+    ],
+}
+
+empty = {"v": 1, "gen": t(minutes=-1), "hz": t(hours=12),
+         "hl": "Calendar is clear until tomorrow and nobody is waiting on you.",
+         "cards": [{"id": "cal:standup", "k": "event", "p": 30, "at": at(1, 9, 30), "t": "Standup",
+                    "st": at(1, 6, 0)}]}
+
+# A quiet Friday afternoon: wins up top, nothing urgent.
+friday = {"v": 1, "gen": t(minutes=-3), "hz": t(hours=12), "hl": "Fourteen wins this week. Nothing on fire. Go outside.",
+          "cards": [c for c in day["cards"] if c["k"] in ("wins", "traffic", "music", "quest")]}
+friday["cards"] = [dict(c, p=90) if c["k"] == "wins" else c for c in friday["cards"]]
+
+for name, doc in (("day", day), ("empty", empty), ("friday", friday)):
+    with open(os.path.join(HERE, name + ".json"), "w") as f:
+        json.dump(doc, f, indent=1, ensure_ascii=False)
+print("now =", int(NOW.timestamp()))

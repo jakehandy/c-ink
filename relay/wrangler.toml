@@ -1,0 +1,8 @@
+name = "c-ink-relay"
+main = "src/index.js"
+compatibility_date = "2025-06-01"
+
+# Create the namespace with `npx wrangler kv namespace create BLOBS` and paste its id here.
+[[kv_namespaces]]
+binding = "BLOBS"
+id = "REPLACE_WITH_YOUR_KV_NAMESPACE_ID"

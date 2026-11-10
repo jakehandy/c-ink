@@ -1,0 +1,39 @@
+[package]
+name = "cink-bridge"
+description = "Runs Claude Code to build C-Ink digests and serves them to TICKEY devices"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "cink_bridge"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cink-bridge"
+path = "src/main.rs"
+
+[dependencies]
+aes-gcm = "0.10"
+anyhow = "1"
+base64 = "0.22"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std", "serde"] }
+dirs = "5"
+hostname = "0.4"
+iana-time-zone = "0.1"
+log = "0.4"
+env_logger = { version = "0.11", default-features = false, features = ["humantime"] }
+mdns-sd = "0.13"
+parking_lot = "0.12"
+png = "0.17"
+rand = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serialport = { version = "4", default-features = false }
+sha2 = "0.10"
+tiny_http = "0.12"
+ureq = { version = "2", default-features = false, features = ["tls", "json"] }
+which = "6"
+
+[build-dependencies]
+cc = "1"

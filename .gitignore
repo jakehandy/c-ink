@@ -1,0 +1,14 @@
+build/
+sim/build/
+firmware/build/
+firmware/sdkconfig
+firmware/sdkconfig.old
+firmware/managed_components/
+desktop/target/
+desktop/src-tauri/target/
+desktop/src-tauri/gen/
+node_modules/
+relay/.wrangler/
+.DS_Store
+*.swp
+__pycache__/

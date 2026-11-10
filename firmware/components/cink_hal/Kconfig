@@ -1,0 +1,56 @@
+menu "C-Ink board (TICKEY)"
+
+    choice CINK_DISPLAY
+        prompt "Display backend"
+        default CINK_DISPLAY_HEADLESS
+        help
+            Fallback when no panel is set in the board profile. A board
+            profile sent over USB (see tools/tickey-probe) always wins: an SPI
+            panel profile runs the scripted driver regardless of this choice.
+            Headless logs every frame and serves it to C-Ink Settings over USB
+            so the whole stack can be brought up without the panel.
+
+        config CINK_DISPLAY_HEADLESS
+            bool "Headless (log + USB frame dump)"
+        config CINK_DISPLAY_TICKEY
+            bool "TICKEY panel via the vendor BSP"
+            help
+                Links against tickey_panel_* from the vendor board support
+                component. See docs/hardware.md.
+    endchoice
+
+    config CINK_FULL_REFRESH_EVERY
+        int "Full (ghost-clearing) refresh every N updates"
+        default 12
+
+    # Button pins below are only defaults: a board profile (Learn buttons in
+    # C-Ink Settings) overrides them without reflashing.
+    config CINK_PIN_BTN_UP
+        int "GPIO: Up button (-1 = unknown)"
+        default -1
+        range -1 48
+    config CINK_PIN_BTN_DOWN
+        int "GPIO: Down button (-1 = unknown)"
+        default -1
+        range -1 48
+    config CINK_PIN_BTN_BACK
+        int "GPIO: Back button (-1 = unknown)"
+        default -1
+        range -1 48
+    config CINK_BTN_ACTIVE_LOW
+        bool "Buttons pull the line low when pressed"
+        default y
+
+    config CINK_BATT_ADC_GPIO
+        int "GPIO: battery sense ADC (-1 = unknown)"
+        default -1
+        range -1 20
+    config CINK_BATT_DIVIDER_X100
+        int "Battery divider ratio x100 (200 = 1:1 divider)"
+        default 200
+    config CINK_PIN_CHARGING
+        int "GPIO: charger status, low while charging (-1 = unknown)"
+        default -1
+        range -1 48
+
+endmenu

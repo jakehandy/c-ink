@@ -1,0 +1,92 @@
+{
+ "v": 1,
+ "gen": 1794350640,
+ "hz": 1794394020,
+ "hl": "Fourteen wins this week. Nothing on fire. Go outside.",
+ "cards": [
+  {
+   "id": "once:low-tide",
+   "k": "music",
+   "p": 35,
+   "t": "“Low Tide” is climbing",
+   "big": "12.4k",
+   "dl": "+31% this week",
+   "s": "Released 6 days ago. Spotify is 72% of plays.",
+   "sp": [
+    20,
+    22,
+    28,
+    35,
+    41,
+    52,
+    64
+   ]
+  },
+  {
+   "id": "tavern:s14",
+   "k": "quest",
+   "p": 30,
+   "at": 1794711600,
+   "t": "The Sunken Archive",
+   "s": "Session 14  ·  Saturday 7:00 PM",
+   "b": "Your bard is at 34/41 HP with 2 spell slots left. The party left the archivist's key with the harbor guard."
+  },
+  {
+   "id": "vercel:traffic",
+   "k": "traffic",
+   "p": 34,
+   "t": "Launch post is pulling people in",
+   "sh": "Traffic up",
+   "big": "8,312",
+   "dl": "+64% vs a usual Tuesday",
+   "s": "Top page: /blog/c-ink  ·  41% from Hacker News",
+   "sp": [
+    5,
+    6,
+    6,
+    8,
+    9,
+    12,
+    18,
+    30,
+    44,
+    52,
+    57,
+    61,
+    66,
+    70,
+    74,
+    79,
+    83,
+    86
+   ]
+  },
+  {
+   "id": "wins:week",
+   "k": "wins",
+   "p": 90,
+   "t": "A good week so far",
+   "sh": "Week: 14 wins",
+   "r": [
+    {
+     "l": "9 PRs merged",
+     "d": "Rate limiter, checkout copy, Windows CI and 6 more",
+     "g": "9",
+     "tr": 1
+    },
+    {
+     "l": "4 Linear issues done",
+     "d": "ENG-224 offline sync shipped to beta",
+     "g": "4",
+     "tr": 1
+    },
+    {
+     "l": "“Low Tide” went live",
+     "d": "On 6 stores via ONCE",
+     "g": "1",
+     "tr": 1
+    }
+   ]
+  }
+ ]
+}

@@ -17,6 +17,9 @@ class Json {
   bool arr_begin();
   bool arr_next();                        // false at ']' or on error
   bool str(char* out, size_t cap);        // truncates on a UTF-8 boundary
+  // A base64 string decoded straight into out (no copy of the text). Sets n
+  // to the bytes written; false if it is not base64 or does not fit.
+  bool b64(uint8_t* out, size_t cap, size_t& n);
   bool i64(int64_t& v);
   bool boolean(bool& v);
   bool null();

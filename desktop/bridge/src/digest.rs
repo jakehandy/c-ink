@@ -1,6 +1,8 @@
 //! Turns Claude's structured answer into the compact wire digest the device
 //! parses (docs/protocol.md): trimmed to what the screen can show, times as
-//! unix seconds, private terms filtered a second time, under 20 KB.
+//! unix seconds, private terms filtered a second time, cards under 20 KB.
+//! One dithered photo (the Top story's) may ride along as "img", up to
+//! IMG_MAX_BYTES more; the device caches up to 32 KB.
 
 use chrono::{DateTime, Local};
 use serde_json::{json, Map, Value};
@@ -8,6 +10,7 @@ use serde_json::{json, Map, Value};
 use crate::settings::Settings;
 
 pub const MAX_BYTES: usize = 20 * 1024;
+pub const IMG_MAX_BYTES: usize = 9 * 1024;
 const MAX_CARDS: usize = 24;
 
 fn text(v: &Value, key: &str, max_chars: usize) -> String {
@@ -84,6 +87,7 @@ pub fn build(raw: &Value, s: &Settings, now: DateTime<Local>) -> Built {
     let gen = now.timestamp();
     let mut dropped_private = 0;
     let mut cards: Vec<(i64, Value)> = vec![];
+    let mut images: Vec<(String, Value)> = vec![];
     for c in raw.get("cards").and_then(Value::as_array).cloned().unwrap_or_default() {
         let kind = c.get("kind").and_then(Value::as_str).unwrap_or("other");
         let kind = if crate::kinds::index_of(kind).is_some() { kind } else { "other" };
@@ -93,6 +97,7 @@ pub fn build(raw: &Value, s: &Settings, now: DateTime<Local>) -> Built {
         let mut head = c.clone();
         if let Some(m) = head.as_object_mut() {
             m.remove("rows"); // rows are filtered one by one below
+            m.remove("image"); // pixels, not words (base64 would trip the term check)
         }
         if mentions_private(&head, &s.private_terms) {
             dropped_private += 1;
@@ -192,6 +197,9 @@ pub fn build(raw: &Value, s: &Settings, now: DateTime<Local>) -> Built {
                 continue; // a list card with nothing left in it
             }
         }
+        if let Some(img) = c.get("image").filter(|i| i["k"].is_string()) {
+            images.push((o["id"].as_str().unwrap_or("").to_string(), img.clone()));
+        }
         cards.push((p, Value::Object(o)));
     }
     cards.sort_by_key(|c| std::cmp::Reverse(c.0));
@@ -209,6 +217,20 @@ pub fn build(raw: &Value, s: &Settings, now: DateTime<Local>) -> Built {
         });
         let wire = serde_json::to_vec(&doc).unwrap();
         if wire.len() <= MAX_BYTES || cards.is_empty() {
+            // The photo goes only with a card that made it in.
+            let img = images.iter().find(|(id, _)| !id.is_empty() && cards.iter().any(|c| c.1["id"] == id.as_str()));
+            if let Some((id, i)) = img {
+                let mut im = json!({"id": id, "w": i["w"], "h": i["h"], "k": i["k"]});
+                if i["a"].is_string() {
+                    im["a"] = i["a"].clone();
+                }
+                let mut with = doc.clone();
+                with["img"] = im;
+                let w2 = serde_json::to_vec(&with).unwrap();
+                if w2.len() <= wire.len() + IMG_MAX_BYTES {
+                    return Built { wire: w2, cards: cards.len(), dropped_private, headline };
+                }
+            }
             return Built { wire, cards: cards.len(), dropped_private, headline };
         }
         cards.pop(); // drop the lowest priority card until it fits
@@ -280,5 +302,24 @@ mod tests {
         let b = build(&json!({"headline": "h", "cards": cards}), &s, Local::now());
         assert!(b.wire.len() <= MAX_BYTES);
         assert!(b.cards > 0 && b.cards <= 24);
+    }
+
+    #[test]
+    fn story_photo_rides_along_with_its_card() {
+        let s = Settings::default();
+        let img = crate::photo::wire(&image::RgbImage::from_pixel(216, 120, image::Rgb([90, 90, 90])), false);
+        let raw = json!({"cards": [
+            {"id": "story:1", "kind": "story", "title": "Big news", "priority": 30, "image": img},
+            {"id": "x", "kind": "chat", "title": "Slack", "rows": [{"label": "a"}]}]});
+        let b = build(&raw, &s, Local::now());
+        let v: Value = serde_json::from_slice(&b.wire).unwrap();
+        assert_eq!(v["img"]["id"], "story:1");
+        assert_eq!(v["img"]["w"], 216);
+        assert!(v["cards"][0].get("image").is_none());
+        assert!(b.wire.len() <= MAX_BYTES + IMG_MAX_BYTES);
+        let mut off = s.clone();
+        off.screens.insert("story".into(), false);
+        let v: Value = serde_json::from_slice(&build(&raw, &off, Local::now()).wire).unwrap();
+        assert!(v.get("img").is_none());
     }
 }

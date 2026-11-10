@@ -27,7 +27,7 @@ constexpr int BAR_Y = 34;        // status bar baseline
 constexpr int BAR_RULE = 50;
 constexpr int HERO_Y = 62;
 constexpr int NEXT_ROW_H = 40;   // one "up next" row
-constexpr int CLAWD_CELL = 4;    // the small Clawd on the up next rule: 72 x 40
+constexpr int CLAWD_CELL = 6;    // the small Clawd on the up next rule: 72 x 48
 constexpr int TRACK_CAPS = 6;    // 1.5 px letterspacing for small caps
 
 Ink accent_ink(const Status& st) { return st.mono ? Ink::Black : Ink::Accent; }
@@ -153,10 +153,8 @@ void hero_countdown(Canvas& cv, const Card& c, const Status& st, Box b) {
   int64_t dt = c.at - st.now;
   int mins = (int)((dt + 59) / 60);
   char clock[16], ctx[40];
-  const bool commute = c.kind == Kind::Commute;
-  // A commute card's "at" is the leave-by time and its "end" the meeting start.
-  fmt_clock(commute && c.end ? c.end : c.at, clock, sizeof clock);
-  snprintf(ctx, sizeof ctx, commute ? "ARRIVE %s" : "AT %s", clock);
+  fmt_clock(c.at, clock, sizeof clock);
+  snprintf(ctx, sizeof ctx, "AT %s", clock);
   int y = b.y + 22;
   card_eyebrow(cv, c, st, b.x, y, b.w, ctx);
 
@@ -165,14 +163,14 @@ void hero_countdown(Canvas& cv, const Card& c, const Status& st, Box b) {
   int base = y + 140;
   int nw;
   if (mins <= 1) {
-    nw = cv.text(font_big, b.x - 2, base - 20, commute ? "Go" : "Now", num_ink);
+    nw = cv.text(font_big, b.x - 2, base - 20, "Now", num_ink);
   } else {
     char num[12];
     snprintf(num, sizeof num, "%d", mins);
     nw = cv.text(font_huge, b.x - 4, base, num, num_ink);
     const char* unit = mins == 1 ? "MINUTE" : "MINUTES";
     eyebrow(cv, b.x + nw + 14, base, unit, Ink::Black);
-    eyebrow(cv, b.x + nw + 14, base - 26, commute ? "LEAVE IN" : "STARTS IN", Ink::Black);
+    eyebrow(cv, b.x + nw + 14, base - 26, "STARTS IN", Ink::Black);
   }
   y = base + 22;
   cv.hline(b.x, y, b.w, Ink::Black, 2);
@@ -192,6 +190,117 @@ void hero_countdown(Canvas& cv, const Card& c, const Status& st, Box b) {
     cv.dots(b.x, b.y + b.h - 30, b.w, 3, Ink::Black);
     cv.text(font_small, b.x, b.y + b.h - 6, c.meta, Ink::Black, 0, b.w);
   }
+}
+
+// How the owner is getting there, for the line beside the minutes the card's
+// (eyebrow capitals): the card's delta ("by car"), else guessed from the title's verb ("Drive to ...").
+void travel_mode(const Card& c, char* out, size_t n) {
+  if (c.delta[0]) {
+    snprintf(out, n, "%s", c.delta);
+  } else {
+    struct { const char* verb; const char* mode; } verbs[] = {
+      {"Drive", "by car"}, {"Walk", "on foot"}, {"Bike", "by bike"}, {"Ride", "by bike"},
+      {"Take", "by transit"}, {"Train", "by train"}, {"Bus", "by bus"}, {"Head", "door to door"},
+    };
+    snprintf(out, n, "door to door");
+    for (auto& v : verbs)
+      if (!strncmp(c.title, v.verb, strlen(v.verb))) { snprintf(out, n, "%s", v.mode); break; }
+  }
+}
+
+// Commute: the trip's length is the number ("25 MINUTES BY CAR"), the place
+// goes under it, and the eyebrow counts down to leaving.
+void hero_commute(Canvas& cv, const Card& c, const Status& st, Box b) {
+  int64_t dt = c.at ? c.at - st.now : 0;
+  int leave_in = (int)((dt + 59) / 60);
+  char leave[16], arrive[16], ctx[40];
+  fmt_clock(c.at, leave, sizeof leave);
+  fmt_clock(c.end, arrive, sizeof arrive);
+  if (!c.at) ctx[0] = 0;
+  else if (dt <= 60 && dt > -15 * 60) snprintf(ctx, sizeof ctx, "GO NOW");
+  else if (dt > 0 && leave_in <= 90) snprintf(ctx, sizeof ctx, "LEAVE IN %d MIN", leave_in);
+  else snprintf(ctx, sizeof ctx, "LEAVE BY %s", leave);
+  int y = b.y + 22;
+  card_eyebrow(cv, c, st, b.x, y, b.w, ctx);
+
+  // Trip length: the digits in "big", else arrival minus leave-by.
+  int trip = 0;
+  for (const char* p = c.big; *p; p++) {
+    if (*p >= '0' && *p <= '9') trip = trip * 10 + (*p - '0');
+    else if (trip) break;
+  }
+  if (!trip && c.at && c.end > c.at) trip = (int)((c.end - c.at + 59) / 60);
+  const bool soon = c.at && dt <= 5 * 60;
+  Ink num_ink = (c.urgent || soon) ? accent_ink(st) : Ink::Black;
+  int base = y + 140;
+  if (trip > 0 && trip < 1000) {
+    char num[8], mode[40];
+    snprintf(num, sizeof num, "%d", trip);
+    int nw = cv.text(font_huge, b.x - 4, base, num, num_ink);
+    travel_mode(c, mode, sizeof mode);
+    eyebrow(cv, b.x + nw + 14, base - 26, trip == 1 ? "MINUTE" : "MINUTES", Ink::Black);
+    eyebrow(cv, b.x + nw + 14, base, mode, Ink::Black, b.w - nw - 14);
+  } else {
+    base = y + 60;
+  }
+  y = base + 22;
+  cv.hline(b.x, y, b.w, Ink::Black, 2);
+  y += 42;
+  int used = cv.wrap(font_title_s, b.x, y, b.w, 42, 2, c.title, Ink::Black);
+  y += (used - 1) * 42;
+  int bottom = b.y + b.h - (c.meta[0] ? 44 : 4);
+  if (c.at && y + 36 <= bottom) {
+    char when[64];
+    if (c.end) snprintf(when, sizeof when, "Leave %s  \xC2\xB7  arrive %s", leave, arrive);
+    else snprintf(when, sizeof when, "Leave by %s", leave);
+    y += 36;
+    cv.text(font_body_b, b.x, y, when, soon ? accent_ink(st) : Ink::Black, 0, b.w);
+  }
+  if (c.subtitle[0] && y + 30 <= bottom) {
+    y += 30;
+    cv.text(font_body, b.x, y, c.subtitle, Ink::Black, 0, b.w);
+  }
+  if (c.body[0] && y + 36 <= bottom) {
+    y += 36;
+    cv.wrap(font_body, b.x, y, b.w, 29, (bottom - y) / 29 + 1, c.body, Ink::Black);
+  }
+  if (c.meta[0]) {
+    cv.dots(b.x, b.y + b.h - 30, b.w, 3, Ink::Black);
+    cv.text(font_small, b.x, b.y + b.h - 6, c.meta, Ink::Black, 0, b.w);
+  }
+}
+
+// A dithered photo at 2x, accent pixels in black when the panel is mono.
+void draw_image(Canvas& cv, const Image& im, int x, int y, const Status& st) {
+  const int stride = im.w / 8;
+  const Ink acc = accent_ink(st);
+  for (int j = 0; j < im.h; j++)
+    for (int i = 0; i < im.w; i++) {
+      int bit = 0x80 >> (i & 7), at = j * stride + i / 8;
+      if (im.accent[at] & bit) cv.fill(x + 2 * i, y + 2 * j, 2, 2, acc);
+      else if (im.black[at] & bit) cv.fill(x + 2 * i, y + 2 * j, 2, 2, Ink::Black);
+    }
+}
+
+// The big story: photo across the top, a large headline, one line of dek,
+// and where it is from. Without a photo the headline takes the room.
+void hero_story(Canvas& cv, const Card& c, const Image* im, const Status& st, Box b) {
+  int y = b.y + 22;
+  card_eyebrow(cv, c, st, b.x, y, b.w, c.meta);
+  y += 18;
+  if (im) {
+    draw_image(cv, *im, b.x + (b.w - 2 * im->w) / 2, y, st);
+    y += 2 * im->h + 56;
+  } else {
+    y += 52;
+  }
+  int bottom = b.y + b.h - 4;
+  int lines = (bottom - y) / 52 + 1;
+  if (lines > 3) lines = 3;
+  y = title_block(cv, c.title, b.x, y, b.w, lines < 1 ? 1 : lines);
+  if (c.subtitle[0] && y + 40 <= bottom)
+    cv.wrap(font_body, b.x, y + 38, b.w, 30, (bottom - y - 38) / 30 + 1 > 2 ? 2 : (bottom - y - 38) / 30 + 1,
+            c.subtitle, Ink::Black);
 }
 
 const char* tier_name(int t) {
@@ -341,15 +450,16 @@ void context_for(const Card& c, const Status& st, char* out, size_t n) {
 
 bool is_countdown(const Card& c, const Status& st) {
   int64_t dt = c.at ? c.at - st.now : -1;
-  if (c.kind == Kind::Commute) return c.at && dt > -10 * 60 && dt <= 99 * 60;  // "Go" once leave-by passes
   return c.at && dt > 0 && dt <= 99 * 60 && (c.kind == Kind::Event || c.kind == Kind::Quest);
 }
 
-void hero(Canvas& cv, const Card& c, const Status& st, Box b) {
+void hero(Canvas& cv, const Digest& d, const Card& c, const Status& st, Box b) {
   if (c.urgent) cv.fill(0, b.y + 4, 8, 96, accent_ink(st));
   char ctx[48];
   context_for(c, st, ctx, sizeof ctx);
-  if (is_countdown(c, st)) hero_countdown(cv, c, st, b);
+  if (c.kind == Kind::Story) hero_story(cv, c, image_for(d, c), st, b);
+  else if (c.kind == Kind::Commute) hero_commute(cv, c, st, b);
+  else if (is_countdown(c, st)) hero_countdown(cv, c, st, b);
   else if (c.big[0]) hero_metric(cv, c, st, b, ctx);
   else if (c.nrows) {
     // Lists may run down beside Clawd's head: rows that low are narrowed instead.
@@ -402,17 +512,22 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
       if (is_countdown(*c, st) && dt <= 5 * 60) return Mood::Surprised;
       if (is_countdown(*c, st) && dt <= 15 * 60) return Mood::Busy;
       break;
-    case Kind::Commute: return Mood::Walking;
-    case Kind::Wins: return c->nrows >= 3 ? Mood::Celebrate : Mood::Proud;
+    case Kind::Commute: return strstr(c->delta, "foot") ? Mood::Walking : Mood::Skate;
+    case Kind::Wins: return c->nrows >= 3 ? Mood::Celebrate : Mood::Flag;
+    case Kind::Ship:
+    case Kind::Db:
+    case Kind::Cloud: return Mood::Builder;
+    case Kind::Review: return Mood::Detective;
     case Kind::Music: return Mood::Music;
-    case Kind::News: return Mood::Reading;
-    case Kind::Focus: return Mood::Focused;
+    case Kind::News:
+    case Kind::Story: return Mood::Reading;
+    case Kind::Focus: return Mood::Lift;
     case Kind::Parcel: return Mood::Boop;
     case Kind::Brief: return st.now && local(st.now).hour < 12 ? Mood::Coffee : Mood::Wink;
     case Kind::Claude: {
       for (int i = 0; i < c->nrows; i++)
         if (c->rows[i].tier == 0) return Mood::Wave;
-      return Mood::Typing;
+      return Mood::Wizard;
     }
     case Kind::Money:
       if (c->delta[0] == '+') return Mood::CoinHop;
@@ -429,16 +544,15 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
     case Kind::Teams:
     case Kind::Support:
     case Kind::Mail:
-    case Kind::Review:
       for (int i = 0; i < c->nrows; i++)
         if (c->rows[i].tier == 0) return Mood::Busy;
       break;
     default: break;
   }
-  static const Mood idle[5] = {Mood::Calm, Mood::LookLeft, Mood::LookRight, Mood::Wink, Mood::Peek};
+  static const Mood idle[6] = {Mood::Calm, Mood::LookLeft, Mood::LookRight, Mood::Wink, Mood::Peek, Mood::Float};
   uint32_t h = 2166136261u;
   for (const char* p = c->id; *p; p++) h = (h ^ (uint8_t)*p) * 16777619u;
-  return idle[h % 5];
+  return idle[h % 6];
 }
 
 // Clawd standing on a rule at y, at the right margin.
@@ -500,7 +614,7 @@ void next_event_footer(Canvas& cv, const Card* e, const Status& st, const char* 
 
 void screen_empty(Canvas& cv, const Digest& d, const Status& st, uint32_t disabled) {
   bool never = st.net == Net::NeverSynced || !st.last_sync;
-  big_clawd(cv, 160, 12, never ? Mood::Puzzled : Mood::Happy, st);
+  big_clawd(cv, 160, 16, never ? Mood::Puzzled : Mood::Happy, st);
   center(cv, font_big, 400, never ? "Hello." : "All clear.", Ink::Black);
   const char* line = d.headline[0] ? d.headline : "Nothing needs you right now.";
   if (never) line = "Waiting for the first sync from C-Ink Settings on your computer.";
@@ -514,7 +628,7 @@ void screen_empty(Canvas& cv, const Digest& d, const Status& st, uint32_t disabl
 
 void screen_night(Canvas& cv, const Digest& d, const Status& st, uint32_t disabled) {
   icon_moon(cv, W - M - 56, 64, 56, Ink::Black);
-  big_clawd(cv, 210, 12, Mood::Sleepy, st);
+  big_clawd(cv, 210, 16, Mood::Sleepy, st);
   center(cv, font_big, 440, "Good night.", Ink::Black);
   const Card* e = next_event(d, st.now, disabled);
   char buf[200];
@@ -547,7 +661,7 @@ void step(Canvas& cv, int n, int y, const char* title, const char* body) {
 }
 
 void screen_setup(Canvas& cv, const Status& st) {
-  clawd(cv, M, 70, 6, Mood::Wave, accent_ink(st));
+  clawd(cv, M + 4 * 8, 70, 8, Mood::Wave, accent_ink(st));
   cv.text(font_title, M, 200, "Hi, I'm C-Ink.", Ink::Black);
   cv.wrap(font_sub, M, 244, W - 2 * M, 34, 2, "Three steps and I'll show what matters in your day.", Ink::Black);
   step(cv, 1, 350, "Get C-Ink Settings", "The small Mac / Windows app from github.com/jakehandy/c-ink.");
@@ -568,7 +682,7 @@ void kv(Canvas& cv, int y, const char* k, const char* v) {
 }
 
 void screen_info(Canvas& cv, const Digest& d, const Status& st) {
-  clawd(cv, W - M - clawd_w(4), 76, 4, Mood::Calm, accent_ink(st));
+  clawd(cv, W - M - clawd_w(6), 76, 6, Mood::Calm, accent_ink(st));
   cv.text(font_title_s, M, 112, "This TICKEY", Ink::Black);
   char buf[64], a[24];
   int y = 176;
@@ -609,7 +723,7 @@ int render(Canvas& cv, const Digest& d, const Status& st, const View& v, uint32_
   int cur = v.screen == Screen::Browse ? ((v.index % r.n) + r.n) % r.n : 0;
   const Card& c = d.cards[r.idx[cur]];
   int hero_bottom = up_next(cv, d, r, cur, st, pick_mood(d, r, &c, st));
-  hero(cv, c, st, {M, HERO_Y, W - 2 * M, hero_bottom - HERO_Y});
+  hero(cv, d, c, st, {M, HERO_Y, W - 2 * M, hero_bottom - HERO_Y});
   return r.n;
 }
 

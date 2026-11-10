@@ -3,12 +3,10 @@
 
 namespace cink {
 
-// Clawd, the Claude Code mascot, as the badge's companion. Drawn from the
-// same quadrant-block glyphs Claude Code uses for Clawd in the terminal
-// (9 x 3 characters, each 2 x 4 square pixels), so the poses match its own:
-// eyes open, looking left or right, closed or winking; arms down, up or one
-// up; feet together or stepping; crouching, hopping, and turned to the side
-// or the back. C-Ink adds a mark or a prop for what is on screen.
+// Clawd, the Claude Code mascot, as the badge's companion: the 12 x 8 pixel
+// crab with solid black eyes, arms out at the sides and four legs, in poses
+// drawn by tools/clawdgen.py. C-Ink adds a mark or a prop for what is on
+// screen: hats, a newspaper, a flag, a skateboard.
 enum class Mood : uint8_t {
   Calm,       // default
   Blink,      // eyes shut for a beat
@@ -40,15 +38,23 @@ enum class Mood : uint8_t {
   CoinHop,    // revenue up: hopping with a shadow below
   Crouch,     // ready to go: crouched, looking ahead
   Peek,       // something new: turned halfway, peeking
+  Builder,    // deploys and databases: hard hat and wrench
+  Wizard,     // Claude Code at work: pointed hat and a wand
+  Detective,  // pull requests to review: fedora and a magnifier
+  Skate,      // commute: on a skateboard
+  Flag,       // shipped / the week's wins: a checkered flag
+  Lift,       // heads-down focus: dumbbells and a headband
+  Float,      // idle: hovering
   Count
 };
 
-// Draws Clawd with its top-left at (x, y). cell = one square sprite pixel in
-// screen pixels. The figure is 18*cell wide and 10*cell tall (feet on the
-// bottom edge); marks and props reach up to 4 cells above and to either side.
+// Draws Clawd with its top-left at (x, y). cell = one sprite pixel in screen
+// pixels (even values keep the half pixels crisp). The figure is 12*cell wide
+// and 8*cell tall (feet on the bottom edge); marks and props reach up to 4
+// cells above and to either side.
 void clawd(Canvas& cv, int x, int y, int cell, Mood mood, Ink body);
-constexpr int clawd_w(int cell) { return 18 * cell; }
-constexpr int clawd_h(int cell) { return 10 * cell; }
+constexpr int clawd_w(int cell) { return 12 * cell; }
+constexpr int clawd_h(int cell) { return 8 * cell; }
 const char* mood_name(Mood m);
 
 }  // namespace cink

@@ -60,6 +60,8 @@ struct State {
     smart: Option<Smart>,
     /// Weather card and when it was fetched; forecasts barely move in 30 minutes.
     weather: Option<(i64, String, serde_json::Value)>,
+    /// Cloudflare Traffic card and when it was built (analytics lag a few minutes anyway).
+    cf_traffic: Option<(i64, String, Option<serde_json::Value>)>,
     wire: Option<Vec<u8>>,
     etag: String,
     sealed: HashMap<String, (String, Vec<u8>)>, // device id -> (etag, blob)
@@ -303,7 +305,7 @@ impl Bridge {
     }
 
     /// Screens the bridge makes itself, without Claude: weather, Claude Code,
-    /// Cloudflare alerts, and the cached morning news (researched once a morning).
+    /// Cloudflare alerts and traffic, and the cached morning news (researched once a morning).
     pub fn builtin_cards(&self, s: &Settings, now: chrono::DateTime<Local>) -> Vec<serde_json::Value> {
         let mut out = vec![];
         if s.enabled("weather") && !s.weather_location.trim().is_empty() {
@@ -321,7 +323,13 @@ impl Bridge {
                 Err(e) => log::warn!("cloudflare: {e:#}"),
             }
         }
-        if s.enabled("news") {
+        if s.enabled("traffic") && !s.cloudflare_token.is_empty() {
+            match self.cf_traffic_card(s, now) {
+                Ok(c) => out.extend(c),
+                Err(e) => log::warn!("cloudflare traffic: {e:#}"),
+            }
+        }
+        if s.enabled("news") || s.enabled("story") {
             match crate::news::get(s, now) {
                 Ok(c) => out.extend(c),
                 Err(e) => log::warn!("news: {e:#}"),
@@ -351,6 +359,18 @@ impl Bridge {
         let v = crate::weather::fetch(&place, s.weather_fahrenheit)?;
         let c = crate::weather::card(&v, &place, now)?;
         self.state.lock().weather = Some((now.timestamp(), key, c.clone()));
+        Ok(c)
+    }
+
+    fn cf_traffic_card(&self, s: &Settings, now: chrono::DateTime<Local>) -> Result<Option<serde_json::Value>> {
+        let key = format!("{}|{}", s.cloudflare_account, s.cloudflare_zone);
+        if let Some((at, k, c)) = self.state.lock().cf_traffic.clone() {
+            if k == key && now.timestamp() - at < 30 * 60 {
+                return Ok(c);
+            }
+        }
+        let c = crate::cloudflare::build_traffic(&s.cloudflare_token, &s.cloudflare_account, &s.cloudflare_zone, now)?;
+        self.state.lock().cf_traffic = Some((now.timestamp(), key, c.clone()));
         Ok(c)
     }
 
@@ -435,15 +455,16 @@ impl Bridge {
 }
 
 /// Adds the bridge's own cards to Claude's answer, replacing any card Claude
-/// made for the same screen.
+/// made for a bridge-only screen or with the same id. Traffic is shared:
+/// Claude's Vercel card stays next to the bridge's Cloudflare one.
 fn merge_builtin(raw: &mut serde_json::Value, extra: Vec<serde_json::Value>) {
-    let kinds: Vec<String> = extra.iter().filter_map(|c| c["kind"].as_str().map(str::to_string)).collect();
+    let ids: Vec<String> = extra.iter().filter_map(|c| c["id"].as_str().map(str::to_string)).collect();
     let mut cards: Vec<serde_json::Value> = raw["cards"]
         .as_array()
         .cloned()
         .unwrap_or_default()
         .into_iter()
-        .filter(|c| !crate::kinds::BUILTIN.contains(&c["kind"].as_str().unwrap_or("")) && !kinds.iter().any(|k| c["kind"] == k.as_str()))
+        .filter(|c| !crate::kinds::BUILTIN.contains(&c["kind"].as_str().unwrap_or("")) && !ids.iter().any(|i| c["id"] == i.as_str()))
         .collect();
     cards.extend(extra);
     raw["cards"] = serde_json::Value::Array(cards);
@@ -527,6 +548,18 @@ pub fn next_change_local(wire: &[u8], disabled: u32) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn bridge_traffic_sits_next_to_claudes() {
+        let mut raw = serde_json::json!({"cards": [
+            {"id": "vercel:traffic", "kind": "traffic"},
+            {"id": "wx", "kind": "weather"},
+            {"id": "cf:traffic", "kind": "traffic"}]});
+        merge_builtin(&mut raw, vec![serde_json::json!({"id": "cf:traffic", "kind": "traffic", "src": "cloudflare"}),
+                                     serde_json::json!({"id": "weather:now", "kind": "weather"})]);
+        let ids: Vec<&str> = raw["cards"].as_array().unwrap().iter().map(|c| c["id"].as_str().unwrap()).collect();
+        assert_eq!(ids, vec!["vercel:traffic", "cf:traffic", "weather:now"]);
+    }
 
     fn get(url: &str, token: &str, etag: Option<&str>) -> (u16, Vec<u8>, String) {
         let mut r = ureq::get(url).set("Authorization", &format!("Bearer {token}"));

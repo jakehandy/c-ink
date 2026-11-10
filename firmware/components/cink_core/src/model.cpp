@@ -10,12 +10,12 @@ static const char* const kKeys[] = {"event", "review", "chat",  "mail",  "task",
                                     "music", "quest",  "focus", "brief", "doc",     "other",
                                     "traffic", "db",   "commute", "wins",
                                     "news",  "weather", "claude", "cloud", "parcel",
-                                    "support", "teams"};
+                                    "support", "teams", "story"};
 static const char* const kLabels[] = {"CALENDAR", "REVIEW", "SLACK", "INBOX", "LINEAR",  "SHIP",  "STRIPE",
                                       "ONCE MUSIC", "TAVERN GAME NIGHT",  "FOCUS", "BRIEF", "DOCS",    "NOTE",
                                       "TRAFFIC",  "DATABASE", "COMMUTE", "THIS WEEK",
                                       "NEWS",     "WEATHER", "CLAUDE CODE", "CLOUDFLARE", "DELIVERIES",
-                                      "INTERCOM", "TEAMS"};
+                                      "INTERCOM", "TEAMS", "TOP STORY"};
 static_assert(sizeof kKeys / sizeof kKeys[0] == (size_t)Kind::Count, "kind keys");
 static_assert(sizeof kLabels / sizeof kLabels[0] == (size_t)Kind::Count, "kind labels");
 
@@ -100,6 +100,35 @@ static void parse_card(Json& j, Card& c) {
   }
 }
 
+// "img": {"id": card id, "w", "h", "k": black plane, "a": accent plane}, base64.
+static void parse_img(Json& j, Image& im) {
+  int64_t w = 0, h = 0;
+  size_t nk = 0, na = 0;
+  bool ok = true;
+  char key[8];
+  if (!j.obj_begin()) return;
+  while (j.obj_next(key, sizeof key)) {
+    if (!strcmp(key, "id")) j.str(im.card, sizeof im.card);
+    else if (!strcmp(key, "w")) j.i64(w);
+    else if (!strcmp(key, "h")) j.i64(h);
+    else if (!strcmp(key, "k")) ok &= j.b64(im.black, sizeof im.black, nk);
+    else if (!strcmp(key, "a")) ok &= j.b64(im.accent, sizeof im.accent, na);
+    else j.skip();
+  }
+  size_t need = (size_t)(w / 8 * h);
+  if (!ok || w <= 0 || h <= 0 || w % 8 || w > Image::MAX_W || h > Image::MAX_H || nk != need || (na && na != need)) {
+    memset(&im, 0, sizeof im);
+    return;
+  }
+  if (!na) memset(im.accent, 0, need);
+  im.w = (uint16_t)w;
+  im.h = (uint16_t)h;
+}
+
+const Image* image_for(const Digest& d, const Card& c) {
+  return d.img.w && d.img.card[0] && !strcmp(d.img.card, c.id) ? &d.img : nullptr;
+}
+
 static void parse_cfg(Json& j, DeviceSettings& c) {
   c.present = true;
   c.quiet_start = c.quiet_end = -1;
@@ -139,6 +168,7 @@ bool parse_digest(const char* json, size_t len, Digest& d, const char** err) {
     else if (!strcmp(key, "hz")) j.i64(d.horizon);
     else if (!strcmp(key, "hl")) j.str(d.headline, sizeof d.headline);
     else if (!strcmp(key, "cfg")) parse_cfg(j, d.cfg);
+    else if (!strcmp(key, "img")) parse_img(j, d.img);
     else if (!strcmp(key, "cards")) {
       saw_cards = true;
       if (j.arr_begin())

@@ -33,7 +33,7 @@ pub const KINDS: &[KindInfo] = &[
     KindInfo { key: "doc", name: "Docs", blurb: "Docs shared with you or waiting on your comments, and the doc to read before your next meeting.", source: "gdrive", connectors: &["drive", "notion", "docs", "sharepoint", "microsoft"], default_on: true },
     KindInfo { key: "other", name: "Anything else", blurb: "Something important that fits no other screen.", source: "claude", connectors: &[], default_on: true },
     // Appended after "other" so the device's bit order stays stable.
-    KindInfo { key: "traffic", name: "Traffic", blurb: "Visitors today against a usual day, and where they came from.", source: "vercel", connectors: &["vercel"], default_on: true },
+    KindInfo { key: "traffic", name: "Traffic", blurb: "Visitors today against a usual day, and where they came from, from Vercel Web Analytics and Cloudflare zone analytics.", source: "vercel", connectors: &["vercel"], default_on: true },
     KindInfo { key: "db", name: "Database health", blurb: "Supabase security and performance warnings, paused projects, failing functions.", source: "supabase", connectors: &["supabase"], default_on: true },
     KindInfo { key: "commute", name: "Commute", blurb: "When to leave for your next in-person meeting, from its location and where you will be before it.", source: "gcal", connectors: &["calendar"], default_on: true },
     KindInfo { key: "wins", name: "This week's wins", blurb: "What you shipped this week: merged PRs, closed issues, releases. Shows up on Friday afternoons and quiet stretches.", source: "github", connectors: &["github", "linear", "vercel", "once"], default_on: true },
@@ -41,13 +41,14 @@ pub const KINDS: &[KindInfo] = &[
     KindInfo { key: "weather", name: "Weather", blurb: "Now, today's high and low, and when rain starts, for the place you set.", source: "weather", connectors: &[], default_on: true },
     KindInfo { key: "claude", name: "Claude Code", blurb: "Sessions waiting on you, what you built today, and token use, from Claude Code on this computer.", source: "claudecode", connectors: &[], default_on: true },
     KindInfo { key: "cloud", name: "Cloudflare alerts", blurb: "Cloudflare notifications from the last day: Workers errors, origin and DDoS alerts, certificate expiry.", source: "cloudflare", connectors: &[], default_on: true },
-    KindInfo { key: "parcel", name: "Deliveries", blurb: "Packages arriving today or delayed, from Shop and from Link's order emails.", source: "shop", connectors: &["shop", "gmail", "mail"], default_on: true },
+    KindInfo { key: "parcel", name: "Deliveries", blurb: "Packages arriving today or delayed, from Shop and from order and shipping emails in your inbox.", source: "shop", connectors: &["shop", "gmail", "mail"], default_on: true },
     KindInfo { key: "support", name: "Customer inbox", blurb: "Intercom conversations waiting on you or your team, oldest wait first, with what each customer needs.", source: "intercom", connectors: &["intercom"], default_on: true },
     KindInfo { key: "teams", name: "Teams", blurb: "Teams chats and channel mentions that need you, grouped into now, today and when you can.", source: "m365", connectors: &["microsoft", "teams"], default_on: true },
+    KindInfo { key: "story", name: "Top story", blurb: "The day's one big story, full screen with its photo dithered in color. Cycles in for 15 minutes every 45.", source: "news", connectors: &[], default_on: true },
 ];
 
 /// Screens the bridge builds itself, so Claude is told not to make them.
-pub const BUILTIN: &[&str] = &["weather", "claude", "cloud", "news"];
+pub const BUILTIN: &[&str] = &["weather", "claude", "cloud", "news", "story"];
 
 pub fn index_of(key: &str) -> Option<usize> {
     KINDS.iter().position(|k| k.key == key)
@@ -98,17 +99,16 @@ pub const SOURCES: &[SourceInfo] = &[
     SourceInfo { id: "github", category: "dev", name: "GitHub", icon: "github", blurb: "Reviews, failing CI and the week's merged work. The gh CLI works too.", connect: Connect::Connector(&["github"]), also: &[] },
     SourceInfo { id: "linear", category: "dev", name: "Linear", icon: "linear", blurb: "Issues due soon or blocking someone.", connect: Connect::Connector(&["linear"]), also: &["wins"] },
     SourceInfo { id: "vercel", category: "dev", name: "Vercel", icon: "vercel", blurb: "Failed deploys, runtime errors and traffic.", connect: Connect::Connector(&["vercel"]), also: &["wins"] },
-    SourceInfo { id: "cloudflare", category: "dev", name: "Cloudflare", icon: "cloudflare", blurb: "Account alerts and Workers errors, with a read-only API token.", connect: Connect::Builtin, also: &[] },
+    SourceInfo { id: "cloudflare", category: "dev", name: "Cloudflare", icon: "cloudflare", blurb: "Account alerts, Workers errors and site traffic, with a read-only API token.", connect: Connect::Builtin, also: &["traffic"] },
     SourceInfo { id: "supabase", category: "dev", name: "Supabase", icon: "supabase", blurb: "Security and performance advisors.", connect: Connect::Connector(&["supabase"]), also: &[] },
     SourceInfo { id: "claudecode", category: "dev", name: "Claude Code", icon: "claude", blurb: "Your Claude Code sessions on this computer. Reads timing and token counts, never your conversations.", connect: Connect::Local, also: &[] },
     SourceInfo { id: "stripe", category: "business", name: "Stripe", icon: "stripe", blurb: "Revenue today against a usual day.", connect: Connect::Connector(&["stripe"]), also: &[] },
     SourceInfo { id: "once", category: "business", name: "ONCE", icon: "once", blurb: "The music release platform. How your latest release is doing, and anything stuck in review.", connect: Connect::Connector(&["once"]), also: &["wins"] },
     SourceInfo { id: "gdrive", category: "files", name: "Google Drive", icon: "gdrive", blurb: "Docs waiting on your comments, and the doc to read before each meeting. Add each Google account as its own Drive connector.", connect: Connect::Connector(&["drive"]), also: &[] },
     SourceInfo { id: "shop", category: "shopping", name: "Shop", icon: "shopify", blurb: "Orders and deliveries tracked in the Shop app.", connect: Connect::Connector(&["shop"]), also: &[] },
-    SourceInfo { id: "link", category: "shopping", name: "Link", icon: "link", blurb: "Orders paid with Link. Link has no connector, so C-Ink reads Link's order and shipping emails in Gmail.", connect: Connect::Connector(&["gmail"]), also: &["parcel"] },
     SourceInfo { id: "tavern", category: "life", name: "Tavern", icon: "tavern", blurb: "Your tabletop group's campaign home. Your next session, where the last one ended, and your character.", connect: Connect::Connector(&["tavern"]), also: &[] },
     SourceInfo { id: "weather", category: "life", name: "Weather", icon: "weather", blurb: "Forecast from Open-Meteo for the place you set. No account needed.", connect: Connect::Builtin, also: &[] },
-    SourceInfo { id: "news", category: "life", name: "News", icon: "news", blurb: "Claude researches the web once a morning with your prompt.", connect: Connect::Builtin, also: &[] },
+    SourceInfo { id: "news", category: "life", name: "News", icon: "news", blurb: "Claude researches the web once a morning with your prompt, and picks the day's top story.", connect: Connect::Builtin, also: &[] },
     SourceInfo { id: "claude", category: "builtin", name: "Claude", icon: "claude", blurb: "Built from everything above: the morning plan, the brief, the wrap and anything that fits nowhere else.", connect: Connect::Local, also: &[] },
 ];
 

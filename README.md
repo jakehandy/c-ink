@@ -20,7 +20,7 @@ C-Ink has no accounts, no API keys and no servers of its own (the optional relay
 
 That is the whole integration story, and it is why C-Ink can cover twenty-odd services without shipping twenty-odd integrations:
 
-- **One sign-in.** You sign in to Claude Code once. There is no Google Cloud project, Slack app, OAuth client or API token to create per service (Cloudflare's optional read-only token is the one exception, for alerts no connector covers).
+- **One sign-in.** You sign in to Claude Code once. There is no Google Cloud project, Slack app, OAuth client or API token to create per service (Cloudflare's optional read-only token is the one exception, for alerts and site traffic no connector covers).
 - **Connect once, use everywhere.** A connector you add on claude.ai works in Claude, in Claude Code and on your badge at the same time. Add a second Gmail or Google Drive account and the Inbox and Docs screens pick it up on the next run.
 - **Nothing new to pay for.** Runs come out of your existing Claude plan. There is no C-Ink subscription and no hosted backend holding your data.
 - **Your data stays between you and Claude.** C-Ink allows Claude Code only read-only tools, runs it on your own computer, and sends the device a digest encrypted for that device alone.
@@ -58,7 +58,7 @@ Every source you connect feeds one or more screens. Each screen has a full view,
 | <img src="docs/screens/ship.png" width="200"><br>**Ship status** | <img src="docs/screens/cloudflare.png" width="200"><br>**Cloudflare alerts** | <img src="docs/screens/database.png" width="200"><br>**Database health** | <img src="docs/screens/commute.png" width="200"><br>**Commute** |
 | <img src="docs/screens/focus.png" width="200"><br>**Focus window** | <img src="docs/screens/money.png" width="200"><br>**Revenue** | <img src="docs/screens/traffic.png" width="200"><br>**Traffic** | <img src="docs/screens/wins.png" width="200"><br>**This week's wins** |
 | <img src="docs/screens/all-clear.png" width="200"><br>**All clear** | <img src="docs/screens/night.png" width="200"><br>**Night** | <img src="docs/screens/offline.png" width="200"><br>**Offline** | <img src="docs/screens/next-up-mono.png" width="200"><br>**Black and white** |
-| <img src="docs/screens/info.png" width="200"><br>**Device info** | <img src="docs/screens/setup.png" width="200"><br>**Setup** | | |
+| <img src="docs/screens/top-story.png" width="200"><br>**Top story** | <img src="docs/screens/traffic-cloudflare.png" width="200"><br>**Traffic (Cloudflare)** | <img src="docs/screens/info.png" width="200"><br>**Device info** | <img src="docs/screens/setup.png" width="200"><br>**Setup** |
 
 | Screen | Source | What it shows |
 |---|---|---|
@@ -73,22 +73,23 @@ Every source you connect feeds one or more screens. Each screen has a full view,
 | This week's wins | GitHub, Linear, Vercel, ONCE | Merged PRs, closed issues and releases, from Thursday afternoon on |
 | Linear | Linear | Issues due soon or blocking someone |
 | Ship status | Vercel | Failed production deploys and error spikes |
-| Traffic | Vercel Web Analytics | Visitors today against a usual day, when it is unusual |
+| Traffic | Vercel Web Analytics, Cloudflare (API token) | Page views today against the same day last week, top page and referrer |
 | Cloudflare alerts | Cloudflare (API token) | Notifications from the last day: Workers errors, origin and DDoS alerts, certificates |
 | Database health | Supabase | Tables with row level security off, advisor warnings, paused projects |
 | Revenue | Stripe | Today against a usual day for that weekday, with a sparkline |
-| Deliveries | Shop, Link (via Gmail) | Packages arriving today or delayed |
+| Deliveries | Shop, order emails in Gmail or Outlook | Packages arriving today or delayed |
 | Releases | ONCE | How your latest release is doing this week: streams, stores, anything stuck in review |
 | Game night | Tavern | Your next tabletop session, where the last one left off, and where your character stands |
 | Docs | Google Drive (one connector per account), SharePoint and OneDrive | Docs waiting on your comments, and the one to read before your next meeting |
 | Claude Code | This computer | Sessions waiting on your OK or your reply, commits today, token use |
 | Weather | Open-Meteo | Now, today's high and low, and when rain starts, for the place you set |
 | Morning news | The web | A morning briefing from your own prompt, researched once a morning |
+| Top story | The web | The day's one big story, full screen with its lead photo dithered into the panel's black and orange. Cycles in for 15 minutes every 45 |
 | Brief & wrap, Anything else | Claude | A morning brief, an end-of-day wrap, and anything important that fits nowhere else |
 
 **ONCE** ([once.app](https://once.app)) is a music release platform: artists and labels use it to send songs and albums to Spotify, Apple Music and the other stores, manage their catalog, and see how each release performs. **Tavern** keeps a tabletop roleplaying group's campaign in one place: dated sessions with everyone's notes, a wiki of the people and places in it, maps, character sheets with live hit points and spell slots, and a combat tracker. If you use neither, leave them off; nothing else depends on them.
 
-Three screens never cost a Claude run: **Weather** comes straight from Open-Meteo (only the place you set is sent there), **Cloudflare alerts** from Cloudflare's notification history with a read-only token, and **Claude Code** from the session logs on your computer. That last one reads timing, token counts, folder and branch names only, never what was said, and none of it goes to Claude. **Morning news** is one extra Claude run a morning that can only search and read the web: no connectors are loaded in it, so nothing on the open web can reach your mail or calendar.
+Four screens never cost a Claude run: **Weather** comes straight from Open-Meteo (only the place you set is sent there), **Cloudflare alerts and traffic** from Cloudflare's notification history and zone analytics with a read-only token, and **Claude Code** from the session logs on your computer. That last one reads timing, token counts, folder and branch names only, never what was said, and none of it goes to Claude. **Morning news** is one extra Claude run a morning that can only search and read the web: no connectors are loaded in it, so nothing on the open web can reach your mail or calendar. The same run picks the **Top story**; its photo is downloaded and dithered on your computer, so the badge never fetches anything from the web.
 
 Buttons: **Up/Down** page through every card in Up next, **Back** returns to the top card (press again for device info), **hold Back** to sync now. Leave the buttons alone for 20 seconds, or let it go back to sleep, and it returns to whatever is most relevant at that moment. If you wear it the other way up, tick **Orientation** in Settings: the picture turns 180° and Up and Down swap.
 
@@ -96,7 +97,7 @@ Buttons: **Up/Down** page through every card in Up next, **Back** returns to the
 
 <img src="docs/screens/clawd.png" width="240" align="right" alt="All of Clawd's poses">
 
-Clawd sits on the right end of the Up next line and changes pose with the top card: hopping when a meeting is five minutes out, tapping a foot when it is fifteen, typing while a Claude Code session works, waving when one needs you, peeking over the paper with the news, sunglasses on a clear day, a rain cloud when it is wet, walking for a commute, celebrating a good week, a coin hop when revenue is up, a sweat drop when three things are on fire, asleep at night, puzzled offline. 30 poses in all, drawn from the same quadrant-block sprite and animations Claude Code uses for Clawd in the terminal.
+Clawd sits on the right end of the Up next line and changes pose with the top card: hopping when a meeting is five minutes out, tapping a foot when it is fifteen, a wizard hat while a Claude Code session works, waving when one needs you, a fedora and magnifier for pull requests, a hard hat for deploys and databases, peeking over the paper with the news, sunglasses on a clear day, a rain cloud when it is wet, skateboarding to a meeting, a checkered flag or confetti for a good week, dumbbells for a focus block, a coin hop when revenue is up, a sweat drop when three things are on fire, asleep at night, puzzled offline. 37 poses in all, of the 12 x 8 pixel Clawd with his solid black eyes, drawn by `tools/clawdgen.py`.
 
 <br clear="right">
 
@@ -110,9 +111,8 @@ C-Ink Settings lists every source in a small Marketplace, grouped by type (calen
 </p>
 
 - **claude.ai connectors** (Google Calendar, Gmail, Microsoft 365 for Outlook, Teams and SharePoint, Slack, Intercom, GitHub, Linear, Vercel, Supabase, Stripe, Shop, ONCE, Tavern, Google Drive): connect on claude.ai, then **Recheck**. Add Gmail or Google Drive once per account for multiple accounts.
-- **Built in:** Weather takes a zip code, city or coordinates. Cloudflare takes a read-only API token (Notifications: Read, Account Settings: Read). News takes a sentence describing what you want, for example *"Local news for my zip code, progressive political news, and general news."*
+- **Built in:** Weather takes a zip code, city or coordinates. Cloudflare takes a read-only API token (Notifications: Read and Account Settings: Read for alerts, plus Zone: Read and Analytics: Read for Traffic); pick the site Traffic follows, or let it follow the busiest one. News takes a sentence describing what you want, for example *"Local news for my zip code, progressive political news, and general news."*
 - **On this computer:** Claude Code is found automatically.
-- **Link** has no connector, so Deliveries reads Link's order and shipping emails from your Gmail.
 
 ## Repo layout
 
@@ -134,7 +134,7 @@ C-Ink Settings lists every source in a small Marketplace, grouped by type (calen
 
 ## Size
 
-The firmware image is 1.1 MB, 13% of the 8 MB flash (CI fails the build above 2 MB). The fonts are the biggest piece of C-Ink's own code at ~210 KB; the rest is ESP-IDF, Wi-Fi and TLS. In RAM, the frame (86 KB) and the digest (42 KB) are static and ~85 KB of internal DRAM is left for Wi-Fi and TLS at runtime. No PSRAM required.
+The firmware image is 1.1 MB, 13% of the 8 MB flash (CI fails the build above 2 MB). The fonts are the biggest piece of C-Ink's own code at ~210 KB; the rest is ESP-IDF, Wi-Fi and TLS. In RAM, the frame (86 KB), the digest with its story photo (49 KB) and the 32 KB sync buffer are static, and ~69 KB of internal DRAM is left for Wi-Fi and TLS at runtime. No PSRAM required.
 
 ## Status
 
@@ -159,4 +159,4 @@ cd firmware && idf.py set-target esp32s3 build
 
 ## Trademarks
 
-Brand names and logos (Google Calendar, Gmail, Google Drive, Microsoft 365, Outlook, Teams, Slack, Intercom, GitHub, Linear, Vercel, Cloudflare, Supabase, Stripe, Shopify, Link, Notion, Spotify, ONCE, Tavern, Claude) belong to their owners. Monochrome marks come from [Simple Icons](https://simpleicons.org) (CC0) or from their owners, and are used only to label where a card's information comes from. C-Ink is not affiliated with or endorsed by any of them, or by ENILINX.
+Brand names and logos (Google Calendar, Gmail, Google Drive, Microsoft 365, Outlook, Teams, Slack, Intercom, GitHub, Linear, Vercel, Cloudflare, Supabase, Stripe, Shopify, Notion, Spotify, ONCE, Tavern, Claude) belong to their owners. Monochrome marks come from [Simple Icons](https://simpleicons.org) (CC0) or from their owners, and are used only to label where a card's information comes from. C-Ink is not affiliated with or endorsed by any of them, or by ENILINX.

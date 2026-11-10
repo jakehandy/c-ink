@@ -79,6 +79,37 @@ static void test_commute() {
   CHECK(r.n == 1 && strcmp(d.cards[r.idx[0]].id, "meet") == 0);
 }
 
+static void test_story() {
+  // A 16x2 image: black plane all set in row 0, accent "\/" escaped in JSON.
+  int64_t now = 1'800'000'000 - 1'800'000'000 % 2700;  // start of a story slot
+  char buf[512];
+  snprintf(buf, sizeof buf,
+           R"({"v":1,"gen":%lld,"img":{"id":"story:x","w":16,"h":2,"k":"\/\/8AAA==","a":"AAAAgA=="},"cards":[
+             {"id":"story:x","k":"story","t":"Big news","p":30},
+             {"id":"hot","t":"Hot","p":60}]})",
+           (long long)now);
+  CHECK(parse(buf));
+  CHECK(d.img.w == 16 && d.img.h == 2);
+  CHECK(d.img.black[0] == 0xFF && d.img.black[1] == 0xFF && d.img.black[2] == 0);
+  CHECK(d.img.accent[3] == 0x80);
+  CHECK(image_for(d, d.cards[0]) && !image_for(d, d.cards[1]));
+  Ranked r;
+  rank(d, now, 0, r);
+  CHECK(strcmp(d.cards[r.idx[0]].id, "story:x") == 0);  // its slot
+  rank(d, now + 15 * 60, 0, r);
+  CHECK(strcmp(d.cards[r.idx[0]].id, "hot") == 0);      // cycled out
+  CHECK(next_change(d, now + 60, 0) == now + 15 * 60);
+  // A wrong size drops the image, not the digest.
+  CHECK(parse(R"({"v":1,"gen":5,"img":{"id":"s","w":16,"h":9,"k":"AAAA"},"cards":[{"t":"c"}]})"));
+  CHECK(d.img.w == 0 && d.ncards == 1);
+  Status st{};
+  st.now = now;
+  st.net = Net::Ok;
+  st.last_sync = now;
+  CHECK(parse(buf));
+  render(cv, d, st, View{Screen::Auto, 0}, 0);
+}
+
 static void test_rank() {
   int64_t now = 1'800'000'000;
   char buf[1024];
@@ -214,6 +245,7 @@ int main() {
   test_parse();
   test_truncation_keeps_utf8();
   test_rank();
+  test_story();
   test_text();
   test_time();
   test_render_all_screens();

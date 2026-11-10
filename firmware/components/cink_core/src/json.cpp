@@ -137,6 +137,44 @@ bool Json::str(char* out, size_t cap) {
   return true;
 }
 
+static int b64_val(char c) {
+  if (c >= 'A' && c <= 'Z') return c - 'A';
+  if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+  if (c >= '0' && c <= '9') return c - '0' + 52;
+  if (c == '+') return 62;
+  if (c == '/') return 63;
+  return -1;
+}
+
+bool Json::b64(uint8_t* out, size_t cap, size_t& n) {
+  n = 0;
+  if (err_) return false;
+  ws();
+  if (p_ >= end_ || *p_ != '"') return fail();
+  p_++;
+  uint32_t acc = 0;
+  int bits = 0;
+  bool bad = false;
+  while (p_ < end_ && *p_ != '"') {
+    char c = *p_++;
+    if (c == '=' || c == '\\') continue;  // padding; "\/" is an escaped '/'
+    int v = b64_val(c);
+    if (v < 0) { bad = true; continue; }
+    acc = (acc << 6) | (uint32_t)v;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      if (n < cap) out[n] = (uint8_t)(acc >> bits);
+      else bad = true;
+      n++;
+    }
+  }
+  if (p_ >= end_) return fail();
+  p_++;
+  if (n > cap) n = cap;
+  return !bad;
+}
+
 bool Json::i64(int64_t& v) {
   if (err_) return false;
   ws();

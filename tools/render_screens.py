@@ -11,6 +11,7 @@ relevant one: the fixture is copied with that card raised to the top.
 import argparse
 import json
 import os
+import random
 import subprocess
 import sys
 import tempfile
@@ -32,16 +33,18 @@ SHOTS = [
     ("ship", "vercel:web", [], "Ship status"),
     ("claude-code", "claude:code", [], "Claude Code"),
     ("news", "news:morning", [], "Morning news"),
+    ("top-story", "story:20261110", [], "Top story"),
     ("weather", "weather:now", [], "Weather"),
     ("deliveries", "parcel:today", [], "Deliveries"),
     ("support", "intercom:inbox", [], "Customer inbox (Intercom)"),
     ("teams", "teams:triage", [], "Teams"),
     ("cloudflare", "cloud:alerts", [], "Cloudflare alerts"),
     ("database", "supabase:advisors", [], "Database health"),
-    ("commute", "commute:vanta-drinks", ["--now", str(NOW + 50 * 60)], "Commute"),
+    ("commute", "commute:vanta-drinks", ["--now", str(NOW + 151 * 60)], "Commute"),
     ("focus", "focus:pm", ["--now", str(NOW + 45 * 60)], "Focus window"),
     ("money", "stripe:today", [], "Revenue"),
-    ("traffic", "vercel:traffic", [], "Traffic"),
+    ("traffic", "vercel:traffic", [], "Traffic (Vercel)"),
+    ("traffic-cloudflare", "cf:traffic", [], "Traffic (Cloudflare)"),
     ("releases", "once:low-tide", [], "Releases on ONCE"),
     ("quest", "tavern:s14", [], "Game night on Tavern"),
     ("wins", "wins:week", [], "This week's wins"),
@@ -65,16 +68,20 @@ def render(name, raise_id, extra, tmp):
         if raise_id:
             # The meeting in 12 minutes would outrank anything, so leave it out.
             doc["cards"] = [c for c in doc["cards"] if c["id"] != "cal:design-review" or c["id"] == raise_id]
+            # A different, repeatable mix in Up next for every screenshot.
+            rng = random.Random(name)
             for c in doc["cards"]:
                 if c["id"] == raise_id:
                     c["p"] = 100
                     c.pop("st", None)
                     continue
                 # Calm the rest down so the raised card leads.
-                c["p"] = min(c.get("p", 50), 59)
+                c["p"] = rng.randint(15, 59)
                 c.pop("u", None)
                 for r in c.get("r", []):
                     r.pop("u", None)
+            # The device keeps 24 cards; make sure the raised one is among them.
+            doc["cards"].sort(key=lambda c: c["id"] != raise_id)
         src = os.path.join(tmp, name + ".json")
         json.dump(doc, open(src, "w"))
     out = os.path.join(OUT, name + ".png")

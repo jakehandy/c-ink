@@ -130,6 +130,7 @@ void icon(Canvas& c, Kind k, int x, int y, int s, Ink ink) {
       break;
     }
     case Kind::News:
+    case Kind::Story:
       // A folded newspaper: page outline, a headline bar, column lines.
       c.rect(x + P(8), y + P(10), P(84), P(80), ink, t);
       c.fill(x + P(20), y + P(22), P(60), P(14), ink);

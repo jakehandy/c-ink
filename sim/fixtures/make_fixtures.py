@@ -29,7 +29,7 @@ day = {
          "t": "Design review: onboarding v2", "sh": "Design review", "s": "with Priya, Marco and Dee",
          "b": "Priya wants a yes or no on the new pricing step. Last week's notes flagged drop-off at step 3.",
          "m": "Google Meet  ·  30 min"},
-        {"id": "slack:triage", "k": "chat", "p": 66, "t": "Slack", "src": "slack",
+        {"id": "slack:triage", "k": "chat", "p": 66, "t": "7 unread", "sh": "7 unread in Slack", "src": "slack",
          "r": [
              {"l": "Sam Ortiz", "d": "Wants your OK on the launch date by 4 PM", "g": "DM", "tr": 0, "u": True},
              {"l": "#incidents", "d": "Payments latency alert, you are on call", "g": "!", "tr": 0, "u": True},
@@ -46,7 +46,7 @@ day = {
         {"id": "vercel:web", "k": "ship", "p": 62, "u": True, "t": "Production deploy failed", "sh": "Deploy failed",
          "s": "web-app  ·  main  ·  since 2:27 PM",
          "b": "Missing env STRIPE_WEBHOOK_SECRET in checkout/route.ts. The last good deploy is still serving traffic."},
-        {"id": "gmail:replies", "k": "mail", "p": 48, "t": "Inbox", "sh": "4 emails to answer", "src": "gmail",
+        {"id": "gmail:replies", "k": "mail", "p": 48, "t": "4 unread", "sh": "4 unread emails", "src": "gmail",
          "sec": ["WORK", "PERSONAL", "LABEL"],
          "r": [
              {"l": "Alex, Vanta", "d": "Contract redlines, wants a call by Thursday", "g": "3d", "tr": 0},
@@ -74,8 +74,12 @@ day = {
         {"id": "cal:standup", "k": "event", "p": 30, "at": at(1, 9, 30), "en": at(1, 9, 45), "t": "Standup",
          "s": "Daily  ·  Zoom"},
         {"id": "vercel:traffic", "k": "traffic", "p": 34, "t": "Launch post is pulling people in", "sh": "Traffic up",
-         "big": "8,312", "dl": "+64% vs a usual Tuesday", "s": "Top page: /blog/c-ink  ·  41% from Hacker News",
+         "big": "8,312", "dl": "+64% vs a usual Tuesday", "s": "/blog/c-ink  ·  41% from Hacker News",
          "sp": [5, 6, 6, 8, 9, 12, 18, 30, 44, 52, 57, 61, 66, 70, 74, 79, 83, 86]},
+        {"id": "cf:traffic", "k": "traffic", "p": 30, "src": "cloudflare", "t": "lowtide.fm is busier than usual",
+         "sh": "Traffic up 48%", "big": "3,904", "dl": "+48% vs last Tuesday",
+         "s": "/low-tide  ·  most from Reddit",
+         "sp": [2, 1, 1, 0, 0, 1, 4, 9, 16, 22, 31, 38, 47, 55, 63, 100]},
         {"id": "supabase:advisors", "k": "db", "p": 52, "t": "Supabase: 2 tables open to the public",
          "sh": "2 tables exposed",
          "r": [
@@ -89,7 +93,7 @@ day = {
          "m": "Zuni Café  ·  1658 Market St"},
         {"id": "commute:vanta-drinks", "k": "commute", "p": 55, "at": at(0, 17, 30), "st": at(0, 16, 45),
          "en": at(0, 18, 0), "t": "Drive to Zuni Café", "sh": "Leave 5:30 for Zuni",
-         "s": "About 25 min by car from the office",
+         "big": "25", "dl": "by car", "s": "From the office, with 5 minutes to spare",
          "b": "For drinks with the Vanta team at 6:00 PM. Street parking on Market is tight after 5; the Rose St garage is a block away.",
          "m": "1658 Market St, San Francisco"},
         {"id": "wins:week", "k": "wins", "p": 26, "t": "A good week so far", "sh": "Week: 14 wins",
@@ -134,7 +138,7 @@ day = {
              {"l": "Kestrel", "d": "Wants the annual price before Friday", "g": "3h", "tr": 1},
              {"l": "Two new trials", "d": "Asking how import works", "g": "2", "tr": 2},
          ]},
-        {"id": "teams:triage", "k": "teams", "p": 44, "src": "teams", "t": "Teams", "sh": "Teams: 1 needs you",
+        {"id": "teams:triage", "k": "teams", "p": 44, "src": "teams", "t": "3 unread", "sh": "3 unread in Teams",
          "s": "1 needs you  ·  2 today",
          "r": [
              {"l": "Finance sync", "d": "Ravi needs the Q4 headcount number by 4", "g": "!", "tr": 0},
@@ -146,11 +150,20 @@ day = {
          "r": [
              {"l": "Aesop", "d": "Hand wash refill, arriving today by 8 PM", "tr": 0},
              {"l": "Bellroy", "d": "Tech kit, out for delivery", "tr": 0},
-             {"l": "Keychron", "d": "Delayed, now Thursday (paid with Link)", "g": "!", "tr": 1, "u": True},
+             {"l": "Keychron", "d": "Delayed, now Thursday", "g": "!", "tr": 1, "u": True},
              {"l": "Uniqlo", "d": "In transit, Friday", "tr": 2},
          ]},
     ],
 }
+
+# The Top story and its dithered photo (tools/story_photo.py draws the scene).
+day["cards"].append(
+    {"id": "story:20261110", "k": "story", "p": 30, "st": t(hours=-8), "en": at(0, 21, 0),
+     "t": "Bay's first all-electric ferry starts carrying riders tonight",
+     "sh": "Electric ferry launches", "s": "Twelve crossings a day between the Ferry Building and Oakland, at the same fare.",
+     "m": "Bay Ledger"})
+with open(os.path.join(HERE, "story_img.json")) as f:
+    day["img"] = dict(json.load(f), id="story:20261110")
 
 empty = {"v": 1, "gen": t(minutes=-1), "hz": t(hours=12),
          "hl": "Calendar is clear until tomorrow and nobody is waiting on you.",

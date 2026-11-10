@@ -70,7 +70,7 @@ Buttons: **Up/Down** page through cards, **Back** returns to the top card (press
 
 ## Size
 
-The firmware image is about 1.3 MB of the 8 MB flash (CI fails the build above 2 MB). The fonts are the biggest piece at ~210 KB. RAM use is ~180 KB static, no PSRAM required.
+The firmware image is 1.08 MB, 13% of the 8 MB flash (CI fails the build above 2 MB). The fonts are the biggest piece of C-Ink's own code at ~210 KB; the rest is ESP-IDF, Wi-Fi and TLS. In RAM, the frame (86 KB) and the digest (42 KB) are static and ~94 KB of internal DRAM is left for Wi-Fi and TLS at runtime. No PSRAM required.
 
 ## Status
 

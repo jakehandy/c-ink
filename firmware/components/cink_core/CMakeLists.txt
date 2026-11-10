@@ -3,13 +3,15 @@
 # static library for the simulator, tests and the desktop preview.
 set(CINK_CORE_SRCS
   src/canvas.cpp src/font.cpp src/icons.cpp src/json.cpp src/model.cpp
-  src/rank.cpp src/timefmt.cpp src/ui.cpp src/capi.cpp)
+  src/rank.cpp src/timefmt.cpp src/ui.cpp)
 
 if(ESP_PLATFORM)
+  # capi.cpp holds its own static frame + digest for host callers; the
+  # firmware owns those buffers itself, so it is left out on device.
   idf_component_register(SRCS ${CINK_CORE_SRCS} INCLUDE_DIRS include)
   target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -Wextra -Wno-unused-parameter)
 else()
-  add_library(cink_core STATIC ${CINK_CORE_SRCS})
+  add_library(cink_core STATIC ${CINK_CORE_SRCS} src/capi.cpp)
   target_include_directories(cink_core PUBLIC include)
   target_compile_features(cink_core PUBLIC cxx_std_17)
   if(NOT MSVC)

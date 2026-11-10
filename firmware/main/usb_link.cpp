@@ -14,14 +14,18 @@
 #include "mbedtls/base64.h"
 #include "sync.h"
 
-static char s_line[8192];
+static char s_line[4608];  // one blob_data line: 3000 bytes as base64 plus JSON
 static size_t s_len;
 static bool s_drop;  // current line overflowed; discard until newline
 #define s_blob g_blob_buf
-#define s_plain g_plain_buf
 static size_t s_blob_len, s_blob_want;
 
-void usb_init() {
+static const uint8_t* s_frame_black;
+static const uint8_t* s_frame_accent;
+
+void usb_init(const uint8_t* black, const uint8_t* accent) {
+  s_frame_black = black;
+  s_frame_accent = accent;
   usb_serial_jtag_driver_config_t c = {};
   c.rx_buffer_size = 4096;
   c.tx_buffer_size = 4096;
@@ -175,15 +179,15 @@ static UsbEvent handle(const char* line, Config& cfg, const UsbStatus& st) {
     if (ok) s_blob_len += n;
     reply_ok(op, ok);
   } else if (!strcmp(op, "blob_end")) {
-    bool ok = s_blob_len == s_blob_want && digest_open(s_blob, s_blob_len, cfg.key, device_id(), s_plain, sizeof s_plain) >= 0;
+    bool ok = s_blob_len == s_blob_want && digest_verify(s_blob, s_blob_len, cfg.key, device_id());
     ok = ok && cache_save(s_blob, s_blob_len);
     if (ok) sync_forget_etag();
     reply_ok(op, ok, ok ? nullptr : "digest did not verify");
     s_blob_want = 0;
     if (ok) ev = UsbEvent::DigestPushed;
   } else if (!strcmp(op, "frame")) {
-    send_plane("black", hal::display_last_black());
-    send_plane("accent", hal::display_last_accent());
+    send_plane("black", s_frame_black);
+    send_plane("accent", s_frame_accent);
     reply_ok("frame_end", true);
   } else if (!strcmp(op, "sync")) {
     reply_ok(op, true);

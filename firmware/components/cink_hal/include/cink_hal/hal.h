@@ -15,9 +15,6 @@ enum class Refresh : uint8_t {
 bool display_init();
 void display_present(const uint8_t* black, const uint8_t* accent, Refresh mode);
 void display_sleep();
-// Last presented frame (headless backend keeps it for the USB frame dump).
-const uint8_t* display_last_black();
-const uint8_t* display_last_accent();
 
 // ---- buttons
 enum Button : uint8_t { BTN_NONE = 0, BTN_UP = 1, BTN_DOWN = 2, BTN_BACK = 4 };

@@ -15,9 +15,7 @@
 
 static const char* TAG = "sync";
 uint8_t g_blob_buf[CACHE_MAX_BLOB];
-char g_plain_buf[CACHE_MAX_BLOB];
 #define s_blob g_blob_buf
-#define s_plain g_plain_buf
 RTC_DATA_ATTR static char s_etag[40];
 
 struct Body {
@@ -99,8 +97,7 @@ static bool find_bridge(const Config& c, char* ip, size_t n, uint16_t& port) {
 }
 
 static SyncResult accept(const Config& c, size_t len) {
-  int n = digest_open(s_blob, len, c.key, device_id(), s_plain, sizeof s_plain);
-  if (n < 0) {
+  if (!digest_verify(s_blob, len, c.key, device_id())) {
     ESP_LOGW(TAG, "digest did not open with this device's key");
     s_etag[0] = 0;
     return SyncResult::Failed;

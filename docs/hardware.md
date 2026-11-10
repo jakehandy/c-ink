@@ -18,6 +18,8 @@ Sources: [enilinxtickey.com](https://enilinxtickey.com/), [CNX Software](https:/
 
 ENILINX describes the firmware as open and says sources come after the crowdfunding campaign. Until then these are unknown: GPIO pinout, the panel interface and Modos driver API, PSRAM size, battery sense and charger pins, and the NFC chip.
 
+C-Ink does not assume PSRAM: the frame, the digest and the network stacks all fit in the S3's internal RAM. If the TICKEY turns out to have PSRAM, enabling `CONFIG_SPIRAM` buys headroom but changes nothing else.
+
 ## Finishing the port
 
 Everything hardware-specific is behind `firmware/components/cink_hal`:
@@ -26,7 +28,7 @@ Everything hardware-specific is behind `firmware/components/cink_hal`:
 2. **Buttons:** set the three GPIOs in menuconfig. They must be RTC-capable to wake from deep sleep (`ext1`).
 3. **Battery:** set the ADC GPIO and divider ratio, and the charger status pin if there is one.
 
-Until then the headless backend keeps the last frame in RAM; **Show its screen** on the Device tab of C-Ink Settings reads it back over USB, so the whole stack can be verified on the real device (or any ESP32-S3 dev board) before the panel works. The Remote buttons on that tab drive the UI over USB too.
+Until then the headless backend draws nothing and the frame stays in the app's canvas; **Show its screen** on the Device tab of C-Ink Settings reads it back over USB, so the whole stack can be verified on the real device (or any ESP32-S3 dev board) before the panel works. The Remote buttons on that tab drive the UI over USB too.
 
 ## Flashing
 

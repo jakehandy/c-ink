@@ -29,5 +29,7 @@ enum class UsbEvent : uint8_t {
   Reset,          // factory reset done; reboot
 };
 
-void usb_init();
+// `black`/`accent` are the app's frame planes, read back by the "frame" op
+// (the panel backends keep no copy).
+void usb_init(const uint8_t* black, const uint8_t* accent);
 UsbEvent usb_poll(Config& cfg, const UsbStatus& st);

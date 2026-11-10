@@ -72,12 +72,13 @@ static void load_digest() {
   memset(&g_digest, 0, sizeof g_digest);
   size_t n = cache_load(g_blob_buf, sizeof g_blob_buf);
   if (!n) { sync_forget_etag(); return; }
-  int m = digest_open(g_blob_buf, n, g_cfg.key, device_id(), g_plain_buf, sizeof g_plain_buf);
+  char* plain = nullptr;
+  int m = digest_open_inplace(g_blob_buf, n, g_cfg.key, device_id(), &plain);
   if (m < 0) { sync_forget_etag(); return; }
   const char* err = nullptr;
-  g_have_digest = parse_digest(g_plain_buf, (size_t)m, g_digest, &err);
+  g_have_digest = parse_digest(plain, (size_t)m, g_digest, &err);
   if (!g_have_digest) ESP_LOGW(TAG, "cached digest rejected: %s", err ? err : "?");
-  memset(g_plain_buf, 0, (size_t)m);  // plaintext only lives in the parsed struct
+  memset(g_blob_buf, 0, n);  // plaintext only lives in the parsed struct
   if (g_have_digest && g_digest.cfg.present) {
     // Settings changed in C-Ink Settings arrive with the digest.
     const DeviceSettings& d = g_digest.cfg;
@@ -245,7 +246,7 @@ static void interactive(uint8_t first) {
 
 static void tethered() {
   ESP_LOGI(TAG, "USB host present: staying awake for C-Ink Settings");
-  usb_init();
+  usb_init(g_cv.black, g_cv.accent);
   int64_t last_input = ms(), unplugged_since = 0, next_tick = 0;
   for (;;) {
     UsbStatus us = {hal::battery_percent(), hal::charging(), R.ssid, R.ip, R.last_sync,
@@ -340,8 +341,8 @@ extern "C" void app_main() {
   load_digest();
 
   esp_sleep_wakeup_cause_t why = esp_sleep_get_wakeup_cause();
-  ESP_LOGI(TAG, "C-Ink %s on %s, wake %d, provisioned %d, digest %d", esp_app_get_description()->version,
-           device_id(), (int)why, g_cfg.provisioned, g_have_digest);
+  ESP_LOGI(TAG, "C-Ink %s on %s, wake %d, provisioned %d, digest %d, free heap %u", esp_app_get_description()->version,
+           device_id(), (int)why, g_cfg.provisioned, g_have_digest, (unsigned)esp_get_free_heap_size());
 
   if (why == ESP_SLEEP_WAKEUP_EXT1) {
     uint8_t b = hal::buttons_from_wake_mask(esp_sleep_get_ext1_wakeup_status());

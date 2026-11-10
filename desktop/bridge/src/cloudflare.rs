@@ -186,7 +186,7 @@ pub fn traffic_card(t: &Traffic, now: DateTime<Local>) -> Option<Value> {
     };
     let mut sub = vec![];
     if !t.top_path.is_empty() {
-        sub.push(format!("Top page: {}", t.top_path));
+        sub.push(t.top_path.clone());
     }
     if !t.top_referrer.is_empty() {
         sub.push(format!("most from {}", pretty_referrer(&t.top_referrer)));
@@ -374,7 +374,7 @@ mod tests {
         assert_eq!(c["big"], "5,300");
         assert_eq!(c["short"], "Traffic up 66%");
         assert!(c["delta"].as_str().unwrap().starts_with("+66% vs last "));
-        assert_eq!(c["subtitle"], "Top page: /blog/launch  ·  most from Hacker News");
+        assert_eq!(c["subtitle"], "/blog/launch  ·  most from Hacker News");
         assert_eq!(c["priority"], 42);
         let quiet = Traffic { today: 0, ..t };
         assert!(traffic_card(&quiet, now).is_none());

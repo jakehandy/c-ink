@@ -153,10 +153,8 @@ void hero_countdown(Canvas& cv, const Card& c, const Status& st, Box b) {
   int64_t dt = c.at - st.now;
   int mins = (int)((dt + 59) / 60);
   char clock[16], ctx[40];
-  const bool commute = c.kind == Kind::Commute;
-  // A commute card's "at" is the leave-by time and its "end" the meeting start.
-  fmt_clock(commute && c.end ? c.end : c.at, clock, sizeof clock);
-  snprintf(ctx, sizeof ctx, commute ? "ARRIVE %s" : "AT %s", clock);
+  fmt_clock(c.at, clock, sizeof clock);
+  snprintf(ctx, sizeof ctx, "AT %s", clock);
   int y = b.y + 22;
   card_eyebrow(cv, c, st, b.x, y, b.w, ctx);
 
@@ -165,14 +163,14 @@ void hero_countdown(Canvas& cv, const Card& c, const Status& st, Box b) {
   int base = y + 140;
   int nw;
   if (mins <= 1) {
-    nw = cv.text(font_big, b.x - 2, base - 20, commute ? "Go" : "Now", num_ink);
+    nw = cv.text(font_big, b.x - 2, base - 20, "Now", num_ink);
   } else {
     char num[12];
     snprintf(num, sizeof num, "%d", mins);
     nw = cv.text(font_huge, b.x - 4, base, num, num_ink);
     const char* unit = mins == 1 ? "MINUTE" : "MINUTES";
     eyebrow(cv, b.x + nw + 14, base, unit, Ink::Black);
-    eyebrow(cv, b.x + nw + 14, base - 26, commute ? "LEAVE IN" : "STARTS IN", Ink::Black);
+    eyebrow(cv, b.x + nw + 14, base - 26, "STARTS IN", Ink::Black);
   }
   y = base + 22;
   cv.hline(b.x, y, b.w, Ink::Black, 2);
@@ -186,6 +184,84 @@ void hero_countdown(Canvas& cv, const Card& c, const Status& st, Box b) {
   }
   if (c.body[0] && y + 32 <= bottom) {
     y += 32;
+    cv.wrap(font_body, b.x, y, b.w, 29, (bottom - y) / 29 + 1, c.body, Ink::Black);
+  }
+  if (c.meta[0]) {
+    cv.dots(b.x, b.y + b.h - 30, b.w, 3, Ink::Black);
+    cv.text(font_small, b.x, b.y + b.h - 6, c.meta, Ink::Black, 0, b.w);
+  }
+}
+
+// How the owner is getting there, for the line beside the minutes the card's
+// (eyebrow capitals): the card's delta ("by car"), else guessed from the title's verb ("Drive to ...").
+void travel_mode(const Card& c, char* out, size_t n) {
+  if (c.delta[0]) {
+    snprintf(out, n, "%s", c.delta);
+  } else {
+    struct { const char* verb; const char* mode; } verbs[] = {
+      {"Drive", "by car"}, {"Walk", "on foot"}, {"Bike", "by bike"}, {"Ride", "by bike"},
+      {"Take", "by transit"}, {"Train", "by train"}, {"Bus", "by bus"}, {"Head", "door to door"},
+    };
+    snprintf(out, n, "door to door");
+    for (auto& v : verbs)
+      if (!strncmp(c.title, v.verb, strlen(v.verb))) { snprintf(out, n, "%s", v.mode); break; }
+  }
+}
+
+// Commute: the trip's length is the number ("25 MINUTES BY CAR"), the place
+// goes under it, and the eyebrow counts down to leaving.
+void hero_commute(Canvas& cv, const Card& c, const Status& st, Box b) {
+  int64_t dt = c.at ? c.at - st.now : 0;
+  int leave_in = (int)((dt + 59) / 60);
+  char leave[16], arrive[16], ctx[40];
+  fmt_clock(c.at, leave, sizeof leave);
+  fmt_clock(c.end, arrive, sizeof arrive);
+  if (!c.at) ctx[0] = 0;
+  else if (dt <= 60 && dt > -15 * 60) snprintf(ctx, sizeof ctx, "GO NOW");
+  else if (dt > 0 && leave_in <= 90) snprintf(ctx, sizeof ctx, "LEAVE IN %d MIN", leave_in);
+  else snprintf(ctx, sizeof ctx, "LEAVE BY %s", leave);
+  int y = b.y + 22;
+  card_eyebrow(cv, c, st, b.x, y, b.w, ctx);
+
+  // Trip length: the digits in "big", else arrival minus leave-by.
+  int trip = 0;
+  for (const char* p = c.big; *p; p++) {
+    if (*p >= '0' && *p <= '9') trip = trip * 10 + (*p - '0');
+    else if (trip) break;
+  }
+  if (!trip && c.at && c.end > c.at) trip = (int)((c.end - c.at + 59) / 60);
+  const bool soon = c.at && dt <= 5 * 60;
+  Ink num_ink = (c.urgent || soon) ? accent_ink(st) : Ink::Black;
+  int base = y + 140;
+  if (trip > 0 && trip < 1000) {
+    char num[8], mode[40];
+    snprintf(num, sizeof num, "%d", trip);
+    int nw = cv.text(font_huge, b.x - 4, base, num, num_ink);
+    travel_mode(c, mode, sizeof mode);
+    eyebrow(cv, b.x + nw + 14, base - 26, trip == 1 ? "MINUTE" : "MINUTES", Ink::Black);
+    eyebrow(cv, b.x + nw + 14, base, mode, Ink::Black, b.w - nw - 14);
+  } else {
+    base = y + 60;
+  }
+  y = base + 22;
+  cv.hline(b.x, y, b.w, Ink::Black, 2);
+  y += 42;
+  int used = cv.wrap(font_title_s, b.x, y, b.w, 42, 2, c.title, Ink::Black);
+  y += (used - 1) * 42;
+  int bottom = b.y + b.h - (c.meta[0] ? 44 : 4);
+  if (c.at && y + 36 <= bottom) {
+    char when[64];
+    if (c.end) snprintf(when, sizeof when, "Leave %s  \xC2\xB7  arrive %s", leave, arrive);
+    else snprintf(when, sizeof when, "Leave by %s", leave);
+    y += 36;
+    cv.text(font_body_b, b.x, y, when, soon ? accent_ink(st) : Ink::Black, 0, b.w);
+  }
+  if (c.subtitle[0] && y + 30 <= bottom) {
+    y += 30;
+    cv.text(font_body, b.x, y, c.subtitle, Ink::Black, 0, b.w);
+  }
+  if (c.body[0] && y + 36 <= bottom) {
+    y += 36;
     cv.wrap(font_body, b.x, y, b.w, 29, (bottom - y) / 29 + 1, c.body, Ink::Black);
   }
   if (c.meta[0]) {
@@ -341,7 +417,6 @@ void context_for(const Card& c, const Status& st, char* out, size_t n) {
 
 bool is_countdown(const Card& c, const Status& st) {
   int64_t dt = c.at ? c.at - st.now : -1;
-  if (c.kind == Kind::Commute) return c.at && dt > -10 * 60 && dt <= 99 * 60;  // "Go" once leave-by passes
   return c.at && dt > 0 && dt <= 99 * 60 && (c.kind == Kind::Event || c.kind == Kind::Quest);
 }
 
@@ -349,7 +424,8 @@ void hero(Canvas& cv, const Card& c, const Status& st, Box b) {
   if (c.urgent) cv.fill(0, b.y + 4, 8, 96, accent_ink(st));
   char ctx[48];
   context_for(c, st, ctx, sizeof ctx);
-  if (is_countdown(c, st)) hero_countdown(cv, c, st, b);
+  if (c.kind == Kind::Commute) hero_commute(cv, c, st, b);
+  else if (is_countdown(c, st)) hero_countdown(cv, c, st, b);
   else if (c.big[0]) hero_metric(cv, c, st, b, ctx);
   else if (c.nrows) {
     // Lists may run down beside Clawd's head: rows that low are narrowed instead.

@@ -242,7 +242,7 @@
    "sh": "Traffic up",
    "big": "8,312",
    "dl": "+64% vs a usual Tuesday",
-   "s": "Top page: /blog/c-ink  ·  41% from Hacker News",
+   "s": "/blog/c-ink  ·  41% from Hacker News",
    "sp": [
     5,
     6,
@@ -262,6 +262,35 @@
     79,
     83,
     86
+   ]
+  },
+  {
+   "id": "cf:traffic",
+   "k": "traffic",
+   "p": 30,
+   "src": "cloudflare",
+   "t": "lowtide.fm is busier than usual",
+   "sh": "Traffic up 48%",
+   "big": "3,904",
+   "dl": "+48% vs last Tuesday",
+   "s": "/low-tide  ·  most from Reddit",
+   "sp": [
+    2,
+    1,
+    1,
+    0,
+    0,
+    1,
+    4,
+    9,
+    16,
+    22,
+    31,
+    38,
+    47,
+    55,
+    63,
+    100
    ]
   },
   {
@@ -314,7 +343,9 @@
    "en": 1794362400,
    "t": "Drive to Zuni Café",
    "sh": "Leave 5:30 for Zuni",
-   "s": "About 25 min by car from the office",
+   "big": "25",
+   "dl": "by car",
+   "s": "From the office, with 5 minutes to spare",
    "b": "For drinks with the Vanta team at 6:00 PM. Street parking on Market is tight after 5; the Rose St garage is a block away.",
    "m": "1658 Market St, San Francisco"
   },

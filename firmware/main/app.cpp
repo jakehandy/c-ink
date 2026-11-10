@@ -80,6 +80,9 @@ static void load_digest() {
   g_have_digest = parse_digest(plain, (size_t)m, g_digest, &err);
   if (!g_have_digest) ESP_LOGW(TAG, "cached digest rejected: %s", err ? err : "?");
   memset(g_blob_buf, 0, n);  // plaintext only lives in the parsed struct
+  // The bridge keeps the same digest (and ETag) while nothing changed, so a
+  // 304 is a fresh confirmation: age untimed cards from the last good sync.
+  if (g_have_digest && R.last_sync > g_digest.generated) g_digest.generated = R.last_sync;
   if (g_have_digest && g_digest.cfg.present) {
     // Settings changed in C-Ink Settings arrive with the digest.
     const DeviceSettings& d = g_digest.cfg;
@@ -180,6 +183,7 @@ static void do_sync() {
   if (r == SyncResult::Updated) load_digest();
   if (ok) {
     R.last_sync = now_s();
+    if (g_have_digest && r == SyncResult::Unchanged) g_digest.generated = R.last_sync;
     R.fails = 0;
   } else if (R.fails < 1000) {
     R.fails++;

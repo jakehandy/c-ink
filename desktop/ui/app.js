@@ -169,6 +169,16 @@ $$("#model-seg button").forEach((b) =>
   })
 );
 $("#about").oninput = (e) => { settings.about = e.target.value; save(); };
+$("#smart-every").onchange = (e) => { settings.smart_every_min = +e.target.value; save(); };
+$("#quick-cal").onchange = (e) => { settings.quick_calendar = e.target.checked; save(); };
+function renderSmart() {
+  $("#smart-every").value = String(settings.smart_every_min ?? 60);
+  $("#quick-cal").checked = settings.quick_calendar !== false;
+  const st = state.status || {};
+  $("#smart-last").textContent = st.smart_at
+    ? `Last smart run ${new Date(st.smart_at * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}${st.last_pass ? `, last pass: ${st.last_pass}` : ""}${st.unchanged ? ", nothing changed since" : ""}.`
+    : "No smart run yet today.";
+}
 // ------------------------------------------------------------ marketplace
 let marketFilter = "all";
 const CONNECTORS_URL = "https://claude.ai/settings/connectors";
@@ -188,15 +198,23 @@ function renderMarket() {
   const list = state.sources.filter((s) => marketFilter === "all" || (marketFilter === "on") === s.connected);
   const on = state.sources.filter((s) => s.connected).length;
   $("#market-count").textContent = `${on} of ${state.sources.length} connected`;
+  const tile = (s) => {
+    const live = s.screens.filter((k) => settings.screens[k.key]).length;
+    return el("button", { class: "tile" + (s.connected ? "" : " off"), onclick: () => openSheet(s.id) },
+      el("div", { class: "top" }, mark(s.icon), el("span", { class: "name" }, s.name)),
+      el("div", { class: "blurb" }, s.blurb),
+      el("div", { class: "foot" },
+        el("span", { class: "state" + (s.connected ? " ok" : "") }, stateLabel(s)),
+        el("span", { class: "count" }, `${live}/${s.screens.length} screen${s.screens.length === 1 ? "" : "s"} on`)));
+  };
+  // One section per type, in the bridge's order; empty sections are left out.
+  const cats = state.categories || [{ id: "", name: "" }];
   $("#market").replaceChildren(
-    ...list.map((s) => {
-      const live = s.screens.filter((k) => settings.screens[k.key]).length;
-      return el("button", { class: "tile" + (s.connected ? "" : " off"), onclick: () => openSheet(s.id) },
-        el("div", { class: "top" }, mark(s.icon), el("span", { class: "name" }, s.name)),
-        el("div", { class: "blurb" }, s.blurb),
-        el("div", { class: "foot" },
-          el("span", { class: "state" + (s.connected ? " ok" : "") }, stateLabel(s)),
-          el("span", { class: "count" }, `${live}/${s.screens.length} screen${s.screens.length === 1 ? "" : "s"} on`)));
+    ...cats.flatMap((c) => {
+      const inCat = list.filter((s) => !c.id || s.category === c.id);
+      return inCat.length ? [el("section", { class: "market-group" },
+        c.name ? el("h3", {}, c.name) : "",
+        el("div", { class: "grid" }, ...inCat.map(tile)))] : [];
     })
   );
 }
@@ -230,6 +248,16 @@ function connectorFlow(s, steps) {
 
 const FLOWS = {
   gmail: (s) => connectorFlow(s, ["Open claude.ai connectors and add Gmail.", "For each extra inbox, add Gmail again and sign in with that account. Each one shows up as its own section on the Inbox screen.", "Come back and recheck."]),
+  outlook: (s) => connectorFlow(s, ["Open claude.ai connectors and add Microsoft 365, signing in with your work or school account.", "Come back and recheck. Outlook mail joins the Inbox screen as its own section, and Outlook meetings join Next up and Commute."]),
+  m365: (s) => connectorFlow(s, ["Open claude.ai connectors and add Microsoft 365.", "Come back and recheck. Teams gets its own screen, and Claude reads SharePoint and OneDrive files to brief you before meetings."]),
+  intercom: (s) => connectorFlow(s, ["Open claude.ai connectors and add Intercom.", "Come back and recheck. The Customer inbox screen shows conversations waiting on you or your team, longest wait first."]),
+  gdrive: (s) => connectorFlow(s, ["Open claude.ai connectors and add Google Drive.", "For each extra Google account, add Google Drive again and sign in with that account.", "Come back and recheck. Claude reads the docs attached to or named in your meetings so Next up can tell you what to know going in."]),
+  once: (s) => el("div", {},
+    el("p", { class: "hint" }, "ONCE (once.app) is a music release platform. Artists and labels use it to send songs and albums to Spotify, Apple Music and the other stores, manage their catalog, and see how each release performs."),
+    connectorFlow(s, ["Open claude.ai connectors and add ONCE with your ONCE account.", "Come back and recheck. Releases shows streams and stores for your latest release, flags anything stuck in review, and new releases count toward This week's wins."])),
+  tavern: (s) => el("div", {},
+    el("p", { class: "hint" }, "Tavern keeps a tabletop roleplaying group's campaign in one place: dated sessions with everyone's notes, a wiki of people and places, maps with pins, character sheets with live hit points and spell slots, and a combat tracker."),
+    connectorFlow(s, ["Open claude.ai connectors and add Tavern.", "Come back and recheck. Game night shows your next session, a line on where the last one left off, and your character's hit points."])),
   shop: (s) => connectorFlow(s, ["Open claude.ai connectors, search for Shop and connect it with the Shop app's sign-in.", "Come back and recheck. The Deliveries screen uses Shop's orders and tracking."]),
   link: () => {
     const g = src("gmail");
@@ -363,7 +391,7 @@ function renderDeviceSettings() {
   $("#refresh").value = settings.refresh_min;
   $("#refresh-val").textContent = `${settings.refresh_min} min`;
   $("#quiet-on").checked = !!settings.quiet;
-  const [qa, qb] = settings.quiet || [23, 7];
+  const [qa, qb] = settings.quiet || [22, 7];
   $("#quiet-a").value = qa;
   $("#quiet-b").value = qb;
   $("#quiet-a").disabled = $("#quiet-b").disabled = !settings.quiet;
@@ -585,6 +613,7 @@ async function boot() {
   await refreshState();
   $$("#model-seg button").forEach((x) => x.classList.toggle("on", x.dataset.model === settings.model));
   $("#about").value = settings.about;
+  renderSmart();
   if (settings.board_profile) hwShow(settings.board_profile);
   $("#instructions").value = settings.instructions;
   chips("#private", "private_terms", "Add a name or topic, press Enter");

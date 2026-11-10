@@ -4,7 +4,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use base64::Engine;
-use cink_bridge::kinds::{Connect, KINDS, SOURCES};
+use cink_bridge::kinds::{Connect, CATEGORIES, KINDS, SOURCES};
 use cink_bridge::{claude, claude_usage, cloudflare, device, digest, preview, prompt, tz, weather, Bridge, Settings};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -77,13 +77,14 @@ fn get_state(app: State<App>) -> Value {
                 .map(|k| json!({"key": k.key, "name": k.name, "blurb": k.blurb, "enabled": s.enabled(k.key),
                                 "shared": k.source != src.id}))
                 .collect();
-            json!({"id": src.id, "name": src.name, "icon": src.icon, "blurb": src.blurb, "how": how,
+            json!({"id": src.id, "category": src.category, "name": src.name, "icon": src.icon, "blurb": src.blurb, "how": how,
                    "connected": connected, "accounts": found.len(), "screens": screens})
         })
         .collect();
     json!({
         "settings": s,
         "sources": sources,
+        "categories": CATEGORIES.iter().map(|(k, n)| json!({"id": k, "name": n})).collect::<Vec<_>>(),
         "screens": screens,
         "connectors": connectors,
         "status": app.bridge.status(),

@@ -19,18 +19,18 @@ pub struct KindInfo {
 }
 
 pub const KINDS: &[KindInfo] = &[
-    KindInfo { key: "event", name: "Next up", blurb: "Your next meetings with a countdown and the one thing to know going in.", source: "gcal", connectors: &["calendar"], default_on: true },
+    KindInfo { key: "event", name: "Next up", blurb: "Your next meetings with a countdown and the one thing to know going in.", source: "gcal", connectors: &["calendar", "outlook", "microsoft"], default_on: true },
     KindInfo { key: "review", name: "Pull requests", blurb: "PRs waiting on your review, and yours that are blocked or failing CI.", source: "github", connectors: &["github"], default_on: true },
     KindInfo { key: "chat", name: "Slack", blurb: "Messages that need you, grouped into now, today and when you can.", source: "slack", connectors: &["slack"], default_on: true },
-    KindInfo { key: "mail", name: "Inbox", blurb: "Threads where someone is waiting on your reply, across every connected email account.", source: "gmail", connectors: &["gmail", "outlook", "mail"], default_on: true },
+    KindInfo { key: "mail", name: "Inbox", blurb: "Threads where someone is waiting on your reply, across every connected email account.", source: "gmail", connectors: &["gmail", "outlook", "microsoft", "mail"], default_on: true },
     KindInfo { key: "task", name: "Linear", blurb: "Issues due soon, or where you are blocking someone.", source: "linear", connectors: &["linear", "jira", "asana"], default_on: true },
     KindInfo { key: "ship", name: "Ship status", blurb: "Failed production deploys and fresh runtime errors.", source: "vercel", connectors: &["vercel", "netlify", "sentry"], default_on: true },
     KindInfo { key: "money", name: "Revenue", blurb: "Today's Stripe revenue against a normal day, with a sparkline.", source: "stripe", connectors: &["stripe"], default_on: true },
-    KindInfo { key: "music", name: "Releases", blurb: "How your latest music release is doing this week.", source: "once", connectors: &["once", "spotify"], default_on: true },
-    KindInfo { key: "quest", name: "Game night", blurb: "Your next tabletop session and where your character stands.", source: "tavern", connectors: &["tavern"], default_on: true },
+    KindInfo { key: "music", name: "Releases", blurb: "How your latest music release is doing on ONCE this week: streams, stores, and anything stuck in review.", source: "once", connectors: &["once", "spotify"], default_on: true },
+    KindInfo { key: "quest", name: "Game night", blurb: "Your next tabletop session from Tavern, a recap of the last one, and where your character stands.", source: "tavern", connectors: &["tavern"], default_on: true },
     KindInfo { key: "focus", name: "Focus window", blurb: "When you have a real gap, the single best thing to do with it.", source: "gcal", connectors: &["calendar"], default_on: true },
     KindInfo { key: "brief", name: "Brief & wrap", blurb: "A one-card morning brief and an end-of-day wrap.", source: "claude", connectors: &[], default_on: true },
-    KindInfo { key: "doc", name: "Docs", blurb: "Docs shared with you or waiting on your comments.", source: "gdrive", connectors: &["drive", "notion", "docs"], default_on: false },
+    KindInfo { key: "doc", name: "Docs", blurb: "Docs shared with you or waiting on your comments, and the doc to read before your next meeting.", source: "gdrive", connectors: &["drive", "notion", "docs", "sharepoint", "microsoft"], default_on: true },
     KindInfo { key: "other", name: "Anything else", blurb: "Something important that fits no other screen.", source: "claude", connectors: &[], default_on: true },
     // Appended after "other" so the device's bit order stays stable.
     KindInfo { key: "traffic", name: "Traffic", blurb: "Visitors today against a usual day, and where they came from.", source: "vercel", connectors: &["vercel"], default_on: true },
@@ -42,6 +42,8 @@ pub const KINDS: &[KindInfo] = &[
     KindInfo { key: "claude", name: "Claude Code", blurb: "Sessions waiting on you, what you built today, and token use, from Claude Code on this computer.", source: "claudecode", connectors: &[], default_on: true },
     KindInfo { key: "cloud", name: "Cloudflare alerts", blurb: "Cloudflare notifications from the last day: Workers errors, origin and DDoS alerts, certificate expiry.", source: "cloudflare", connectors: &[], default_on: true },
     KindInfo { key: "parcel", name: "Deliveries", blurb: "Packages arriving today or delayed, from Shop and from Link's order emails.", source: "shop", connectors: &["shop", "gmail", "mail"], default_on: true },
+    KindInfo { key: "support", name: "Customer inbox", blurb: "Intercom conversations waiting on you or your team, oldest wait first, with what each customer needs.", source: "intercom", connectors: &["intercom"], default_on: true },
+    KindInfo { key: "teams", name: "Teams", blurb: "Teams chats and channel mentions that need you, grouped into now, today and when you can.", source: "m365", connectors: &["microsoft", "teams"], default_on: true },
 ];
 
 /// Screens the bridge builds itself, so Claude is told not to make them.
@@ -61,8 +63,22 @@ pub enum Connect {
     Local,
 }
 
+/// Marketplace sections, in the order they are shown.
+pub const CATEGORIES: &[(&str, &str)] = &[
+    ("calendar", "Calendar & email"),
+    ("chat", "Chat & support"),
+    ("dev", "Build & ship"),
+    ("business", "Business"),
+    ("files", "Docs & files"),
+    ("shopping", "Shopping"),
+    ("life", "Life & play"),
+    ("builtin", "Built into C-Ink"),
+];
+
 pub struct SourceInfo {
     pub id: &'static str,
+    /// Key into CATEGORIES.
+    pub category: &'static str,
     pub name: &'static str,
     /// Icon in desktop/ui/icons: a brand mark from tools/icongen.py or a line icon.
     pub icon: &'static str,
@@ -73,24 +89,27 @@ pub struct SourceInfo {
 }
 
 pub const SOURCES: &[SourceInfo] = &[
-    SourceInfo { id: "gcal", name: "Google Calendar", icon: "gcal", blurb: "Meetings, free time and where you need to be.", connect: Connect::Connector(&["calendar"]), also: &[] },
-    SourceInfo { id: "slack", name: "Slack", icon: "slack", blurb: "What needs you, sorted by how soon.", connect: Connect::Connector(&["slack"]), also: &[] },
-    SourceInfo { id: "gmail", name: "Gmail", icon: "gmail", blurb: "Every connected account in one inbox screen. Add each account as its own Gmail connector.", connect: Connect::Connector(&["gmail", "outlook"]), also: &["parcel"] },
-    SourceInfo { id: "github", name: "GitHub", icon: "github", blurb: "Reviews, failing CI and the week's merged work. The gh CLI works too.", connect: Connect::Connector(&["github"]), also: &[] },
-    SourceInfo { id: "linear", name: "Linear", icon: "linear", blurb: "Issues due soon or blocking someone.", connect: Connect::Connector(&["linear"]), also: &["wins"] },
-    SourceInfo { id: "vercel", name: "Vercel", icon: "vercel", blurb: "Failed deploys, runtime errors and traffic.", connect: Connect::Connector(&["vercel"]), also: &["wins"] },
-    SourceInfo { id: "cloudflare", name: "Cloudflare", icon: "cloudflare", blurb: "Account alerts and Workers errors, with a read-only API token.", connect: Connect::Builtin, also: &[] },
-    SourceInfo { id: "supabase", name: "Supabase", icon: "supabase", blurb: "Security and performance advisors.", connect: Connect::Connector(&["supabase"]), also: &[] },
-    SourceInfo { id: "stripe", name: "Stripe", icon: "stripe", blurb: "Revenue today against a usual day.", connect: Connect::Connector(&["stripe"]), also: &[] },
-    SourceInfo { id: "shop", name: "Shop", icon: "shopify", blurb: "Orders and deliveries tracked in the Shop app.", connect: Connect::Connector(&["shop"]), also: &[] },
-    SourceInfo { id: "link", name: "Link", icon: "link", blurb: "Orders paid with Link. Link has no connector, so C-Ink reads Link's order and shipping emails in Gmail.", connect: Connect::Connector(&["gmail"]), also: &["parcel"] },
-    SourceInfo { id: "once", name: "ONCE", icon: "once", blurb: "How your releases are doing.", connect: Connect::Connector(&["once"]), also: &["wins"] },
-    SourceInfo { id: "tavern", name: "Tavern", icon: "tavern", blurb: "Your next session and your character.", connect: Connect::Connector(&["tavern"]), also: &[] },
-    SourceInfo { id: "gdrive", name: "Google Drive", icon: "gdrive", blurb: "Docs waiting on your comments.", connect: Connect::Connector(&["drive", "notion"]), also: &[] },
-    SourceInfo { id: "claudecode", name: "Claude Code", icon: "claude", blurb: "Your Claude Code sessions on this computer. Reads timing and token counts, never your conversations.", connect: Connect::Local, also: &[] },
-    SourceInfo { id: "weather", name: "Weather", icon: "weather", blurb: "Forecast from Open-Meteo for the place you set. No account needed.", connect: Connect::Builtin, also: &[] },
-    SourceInfo { id: "news", name: "News", icon: "news", blurb: "Claude researches the web once a morning with your prompt.", connect: Connect::Builtin, also: &[] },
-    SourceInfo { id: "claude", name: "Claude", icon: "claude", blurb: "Built from everything above: the brief, the wrap and anything that fits nowhere else.", connect: Connect::Local, also: &[] },
+    SourceInfo { id: "gcal", category: "calendar", name: "Google Calendar", icon: "gcal", blurb: "Meetings, free time and where you need to be. Add each calendar account as its own connector.", connect: Connect::Connector(&["calendar"]), also: &[] },
+    SourceInfo { id: "gmail", category: "calendar", name: "Gmail", icon: "gmail", blurb: "Every connected account in one inbox screen. Add each account as its own Gmail connector.", connect: Connect::Connector(&["gmail"]), also: &["parcel"] },
+    SourceInfo { id: "outlook", category: "calendar", name: "Outlook", icon: "outlook", blurb: "Outlook mail joins the Inbox screen and Outlook meetings join Next up and Commute. Comes through the Microsoft 365 connector.", connect: Connect::Connector(&["outlook", "microsoft"]), also: &["mail", "event", "commute"] },
+    SourceInfo { id: "slack", category: "chat", name: "Slack", icon: "slack", blurb: "What needs you, sorted by how soon.", connect: Connect::Connector(&["slack"]), also: &[] },
+    SourceInfo { id: "m365", category: "chat", name: "Microsoft 365", icon: "m365", blurb: "Teams chats on their own screen, and SharePoint and OneDrive files as context for your meetings.", connect: Connect::Connector(&["microsoft", "sharepoint"]), also: &["doc"] },
+    SourceInfo { id: "intercom", category: "chat", name: "Intercom", icon: "intercom", blurb: "Customer conversations waiting on a reply, so nobody sits unanswered.", connect: Connect::Connector(&["intercom"]), also: &[] },
+    SourceInfo { id: "github", category: "dev", name: "GitHub", icon: "github", blurb: "Reviews, failing CI and the week's merged work. The gh CLI works too.", connect: Connect::Connector(&["github"]), also: &[] },
+    SourceInfo { id: "linear", category: "dev", name: "Linear", icon: "linear", blurb: "Issues due soon or blocking someone.", connect: Connect::Connector(&["linear"]), also: &["wins"] },
+    SourceInfo { id: "vercel", category: "dev", name: "Vercel", icon: "vercel", blurb: "Failed deploys, runtime errors and traffic.", connect: Connect::Connector(&["vercel"]), also: &["wins"] },
+    SourceInfo { id: "cloudflare", category: "dev", name: "Cloudflare", icon: "cloudflare", blurb: "Account alerts and Workers errors, with a read-only API token.", connect: Connect::Builtin, also: &[] },
+    SourceInfo { id: "supabase", category: "dev", name: "Supabase", icon: "supabase", blurb: "Security and performance advisors.", connect: Connect::Connector(&["supabase"]), also: &[] },
+    SourceInfo { id: "claudecode", category: "dev", name: "Claude Code", icon: "claude", blurb: "Your Claude Code sessions on this computer. Reads timing and token counts, never your conversations.", connect: Connect::Local, also: &[] },
+    SourceInfo { id: "stripe", category: "business", name: "Stripe", icon: "stripe", blurb: "Revenue today against a usual day.", connect: Connect::Connector(&["stripe"]), also: &[] },
+    SourceInfo { id: "once", category: "business", name: "ONCE", icon: "once", blurb: "ONCE is a music release platform: artists put out songs and albums to the streaming stores and track how they do. C-Ink shows how your latest release is doing and anything stuck in review.", connect: Connect::Connector(&["once"]), also: &["wins"] },
+    SourceInfo { id: "gdrive", category: "files", name: "Google Drive", icon: "gdrive", blurb: "Docs waiting on your comments, and the doc to read before each meeting. Add each Google account as its own Drive connector.", connect: Connect::Connector(&["drive"]), also: &[] },
+    SourceInfo { id: "shop", category: "shopping", name: "Shop", icon: "shopify", blurb: "Orders and deliveries tracked in the Shop app.", connect: Connect::Connector(&["shop"]), also: &[] },
+    SourceInfo { id: "link", category: "shopping", name: "Link", icon: "link", blurb: "Orders paid with Link. Link has no connector, so C-Ink reads Link's order and shipping emails in Gmail.", connect: Connect::Connector(&["gmail"]), also: &["parcel"] },
+    SourceInfo { id: "tavern", category: "life", name: "Tavern", icon: "tavern", blurb: "Tavern keeps a tabletop group's campaign: dated sessions with everyone's notes, a wiki, maps, character sheets with live hit points, and a combat tracker. C-Ink shows your next session and your character.", connect: Connect::Connector(&["tavern"]), also: &[] },
+    SourceInfo { id: "weather", category: "life", name: "Weather", icon: "weather", blurb: "Forecast from Open-Meteo for the place you set. No account needed.", connect: Connect::Builtin, also: &[] },
+    SourceInfo { id: "news", category: "life", name: "News", icon: "news", blurb: "Claude researches the web once a morning with your prompt.", connect: Connect::Builtin, also: &[] },
+    SourceInfo { id: "claude", category: "builtin", name: "Claude", icon: "claude", blurb: "Built from everything above: the morning plan, the brief, the wrap and anything that fits nowhere else.", connect: Connect::Local, also: &[] },
 ];
 
 #[cfg(test)]
@@ -104,6 +123,7 @@ mod tests {
             assert!(SOURCES.iter().any(|s| s.id == k.source), "{} has no source", k.key);
         }
         for s in SOURCES {
+            assert!(CATEGORIES.iter().any(|(c, _)| *c == s.category), "{} has no category", s.id);
             for a in s.also {
                 assert!(index_of(a).is_some(), "{} lists unknown screen {a}", s.id);
             }

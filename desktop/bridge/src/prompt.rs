@@ -10,6 +10,7 @@ pub const SCHEMA: &str = r#"{
   "type": "object",
   "properties": {
     "headline": {"type": "string", "description": "One plain sentence on the shape of the day, max 60 chars. Shown when there is nothing else on the screen, so it can have a little personality."},
+    "plan": {"type": "array", "items": {"type": "string"}, "maxItems": 10, "description": "Your plan for the rest of the day, for your own later check-ins (the owner never sees it): one line each, in time order, with what to watch for, e.g. '2:30 PM design review: Priya wants a yes/no on pricing step; brief from the Q3 pricing doc'"},
     "cards": {
       "type": "array",
       "maxItems": 20,
@@ -17,8 +18,8 @@ pub const SCHEMA: &str = r#"{
         "type": "object",
         "properties": {
           "id": {"type": "string", "description": "Stable id, e.g. cal:<event id>, gh:queue, slack:triage"},
-          "kind": {"type": "string", "enum": ["event","review","chat","mail","task","ship","money","music","quest","focus","brief","doc","other","traffic","db","commute","wins","parcel"]},
-          "src": {"type": "string", "enum": ["gcal","github","gmail","gdrive","linear","vercel","stripe","supabase","shop","notion","spotify","slack",""], "description": "Which service this came from, for its icon"},
+          "kind": {"type": "string", "enum": ["event","review","chat","mail","task","ship","money","music","quest","focus","brief","doc","other","traffic","db","commute","wins","parcel","support","teams"]},
+          "src": {"type": "string", "enum": ["gcal","github","gmail","gdrive","linear","vercel","stripe","supabase","shop","notion","spotify","slack","outlook","teams","m365","intercom","once","tavern",""], "description": "Which service this came from, for its icon"},
           "sections": {"type": "array", "items": {"type": "string"}, "maxItems": 3, "description": "Names for row tiers 0, 1 and 2, max 12 chars each, when the default (NOW, TODAY, WHEN YOU CAN) does not fit"},
           "title": {"type": "string", "description": "Max 40 chars"},
           "short": {"type": "string", "description": "Max 22 chars, for the 'up next' list"},
@@ -56,7 +57,20 @@ pub const SCHEMA: &str = r#"{
   "required": ["headline", "cards"]
 }"#;
 
+/// Which kind of smart run this is.
+pub enum Pass<'a> {
+    /// First run of the day: look at everything and plan the day.
+    Morning,
+    /// A later check-in: adjust this morning's plan and the cards on the badge.
+    CheckIn { plan: &'a [String], current: &'a [serde_json::Value], since: DateTime<Local> },
+}
+
 pub fn build(s: &Settings, now: DateTime<Local>, tools: &[String], gh_context: Option<&str>, builtin: &[serde_json::Value]) -> String {
+    build_pass(s, now, tools, gh_context, builtin, &Pass::Morning)
+}
+
+pub fn build_pass(s: &Settings, now: DateTime<Local>, tools: &[String], gh_context: Option<&str>, builtin: &[serde_json::Value],
+                  pass: &Pass) -> String {
     let enabled: Vec<String> = KINDS
         .iter()
         .filter(|k| s.enabled(k.key) && !BUILTIN.contains(&k.key))
@@ -66,7 +80,8 @@ pub fn build(s: &Settings, now: DateTime<Local>, tools: &[String], gh_context: O
     let mut p = String::new();
     p.push_str(&format!(
         "You are the brain of C-Ink, a 3.7-inch e-ink badge worn in portrait (480 wide, 720 tall) that shows its \
-         owner the single most relevant thing in their day, with Clawd, the Claude Code mascot, in the corner. It refreshes every {} minutes. Right now it is {} ({}).\n\n",
+         owner the single most relevant thing in their day, with Clawd, the Claude Code mascot, in the corner. The badge \
+         refreshes every {} minutes; between your runs C-Ink keeps calendar times current on its own. Right now it is {} ({}).\n\n",
         s.refresh_min,
         now.format("%A %B %-d, %Y, %-I:%M %p"),
         now.format("UTC%:z")
@@ -83,11 +98,42 @@ pub fn build(s: &Settings, now: DateTime<Local>, tools: &[String], gh_context: O
             s.commute_buffer_min
         ));
     }
-    p.push_str(
-        "Use your connected tools (read-only) to look at what is happening from now until about 12 hours out, \
-         plus the first thing tomorrow. Then return cards for the screens below. Be selective: an empty screen \
-         is better than noise. Aim for 6 to 14 cards.\n\n",
-    );
+    match pass {
+        Pass::Morning => p.push_str(
+            "This is the MORNING PLAN, the first run of the day. Use your connected tools (read-only) to look at the \
+             whole day ahead, from now until about 12 hours out, plus the first thing tomorrow. Do the homework a great \
+             chief of staff would: for every meeting, read the invite and anything linked or attached, search the docs \
+             connectors (Drive, SharePoint, OneDrive, Notion) for the doc it is about, and check recent email, Slack and \
+             Teams threads with the attendees and any related issues or PRs, so each event card says the one thing to know \
+             going in. Then return cards for the screens below, and in \"plan\" write down the plan for the day that your \
+             later check-ins will follow. Be selective: an empty screen is better than noise. Aim for 6 to 14 cards.\n\n",
+        ),
+        Pass::CheckIn { plan, current, since } => {
+            p.push_str(&format!(
+                "This is a CHECK-IN. You planned the day this morning and last looked at {}. Look for what is new or \
+                 changed since then (new messages, moved or cancelled meetings, deploys, deliveries) and adjust: keep \
+                 cards that still hold with the same id and wording, rewrite the ones that changed, drop what is done, add \
+                 what is new, and research context for any meeting that appeared since the plan. Return the full set of \
+                 cards, plus the plan updated for the rest of the day. Aim for 6 to 14 cards.\n\n",
+                since.format("%-I:%M %p")
+            ));
+            if !plan.is_empty() {
+                p.push_str("This morning's plan:\n");
+                for l in plan.iter() {
+                    p.push_str(&format!("- {l}\n"));
+                }
+                p.push('\n');
+            }
+            if !current.is_empty() {
+                p.push_str("Cards on the badge now (id, kind, title):\n");
+                for c in current.iter() {
+                    p.push_str(&format!("- {} | {} | {}\n", c["id"].as_str().unwrap_or(""), c["kind"].as_str().unwrap_or(""),
+                                        c["title"].as_str().unwrap_or("")));
+                }
+                p.push('\n');
+            }
+        }
+    }
     p.push_str("Screens the owner has turned on:\n");
     p.push_str(&enabled.join("\n"));
     p.push_str(&format!("\n\nConnected services: {}.\n", if servers.is_empty() { "none detected".into() } else { servers.join(", ") }));
@@ -129,18 +175,20 @@ pub fn build(s: &Settings, now: DateTime<Local>, tools: &[String], gh_context: O
 }
 
 const GUIDE: &str = r#"How to build each screen:
-- event: one card per meeting in the next 12 hours, plus the first meeting tomorrow. Skip declined events, cancelled events and all-day placeholders. "at" is the start, "end" the end. subtitle = who (first names, max 3), meta = where or how (room, Meet, Zoom) and length. body = the single thing worth knowing going in, pulled from the invite, a linked doc or a recent thread (what is being decided, what was promised). Priority 40-75 by importance; the device adds urgency as the start nears, so do not inflate it.
+- event: one card per meeting in the next 12 hours, plus the first meeting tomorrow, across every calendar connector (Google Calendar accounts and Outlook). id = "cal:" + the event id exactly as the connector gives it, so C-Ink can keep its time current between your runs. src "outlook" for Outlook events. Skip declined events, cancelled events and all-day placeholders. "at" is the start, "end" the end. subtitle = who (first names, max 3), meta = where or how (room, Meet, Zoom) and length. body = the single thing worth knowing going in, pulled from the invite, a linked doc or a recent thread (what is being decided, what was promised). Priority 40-75 by importance; the device adds urgency as the start nears, so do not inflate it.
 - review: ONE card. Rows = PRs waiting on the owner's review (tier 0 if older than a day or blocking a release, else 1) and the owner's own PRs that are failing CI or have changes requested (tier 0). label "repo #123", badge = age ("2d") or "CI". short like "3 PRs need you".
 - chat: ONE card titled "Slack", src "slack". Rows grouped by tier: 0 = needs the owner now (direct asks, mentions with deadlines, incidents they own), 1 = reply today, 2 = when they can. Each row is a person or channel plus the gist in a few words. Group related messages into one row with a count badge. Skip bots, joins, and anything already answered by the owner.
-- mail: ONE card titled "Inbox", src "gmail", across every connected email account. Rows are threads where a real person is waiting on the owner: label = sender, detail = what they need. Ignore newsletters, receipts and notifications. With more than one account, use the row tier for the account (tier 0 = the first account, 1 = the second, 2 = the third) and set "sections" to short account names in that order (e.g. ["WORK", "PERSONAL", "SIDE"] from the address or domain, never a full address). With one account, use tiers for urgency as usual.
+- mail: ONE card titled "Inbox", src "gmail" (or "outlook" when only Outlook is connected), across every connected email account, Gmail and Outlook alike. Rows are threads where a real person is waiting on the owner: label = sender, detail = what they need. Ignore newsletters, receipts and notifications. With more than one account, use the row tier for the account (tier 0 = the first account, 1 = the second, 2 = the third) and set "sections" to short account names in that order (e.g. ["WORK", "PERSONAL", "SIDE"] from the address or domain, never a full address). With one account, use tiers for urgency as usual.
+- teams: ONE card titled "Teams", src "teams", from the Microsoft 365 connector's Teams chat search, built like the Slack card: rows are people or channels plus the gist, tiers 0 = needs the owner now, 1 = today, 2 = when they can.
+- support: ONE card titled "Customer inbox", src "intercom": open Intercom conversations waiting on the owner or their team. Rows: label = customer or company (max 22), detail = what they need, badge = how long they have waited ("3h", "2d"). Tiers: 0 = waiting on the owner or past the team's reply target, 1 = assigned to the owner, 2 = unassigned in the team inbox. subtitle like "5 waiting, oldest 2d". Nothing if the inbox is clear.
 - task: issues assigned to the owner that are due within 2 days or that someone is blocked on. One card per issue (max 3) or one card with rows.
 - ship: only failures that are still failing (latest production deploy errored, error spikes in the last hours). urgent = true. Nothing if all is green.
 - money: one card, big = today's gross so far, delta = against the same weekday's usual, spark = cumulative revenue through today (up to 24 points, 0-100 scale). Only if the data is readily available.
-- music: one card for the most recent release, big = streams this week (e.g. "12.4k"), delta vs last week, spark = daily trend.
-- quest: the next scheduled tabletop session (title = campaign or adventure name, at = start) and in body where the owner's character stands (HP, notable state, last cliffhanger). Only if a session is within 7 days.
+- music: (ONCE is the owner's music release platform) one card for the most recent release, src "once", subtitle = the release name, big = streams this week (e.g. "12.4k"), delta vs last week, spark = daily trend.
+- quest: (Tavern is where the owner's tabletop group keeps its campaign) src "tavern": the next scheduled tabletop session (title = campaign or adventure name, at = start) and in body where the owner's character stands (HP, notable state, last cliffhanger). Only if a session is within 7 days.
 - focus: if there is a free block of 45+ minutes later today, one card for it: start = block start, end = block end, title like "Free until 4:30. Finish the rate limiter review." with the single highest-leverage item from everything above.
 - brief: before 11 AM one morning brief card (start now, end 11 AM): the day in one line in title, body with the 2-3 things that matter. After 4 PM an evening wrap card (what got done, what tomorrow starts with).
-- doc: docs shared with the owner or with unresolved comments for them, last 2 days.
+- doc: docs shared with the owner or with unresolved comments for them in the last 2 days, from every Google Drive account and SharePoint/OneDrive, plus the doc to read before the next meeting when there is one. src "gdrive" or "m365".
 - other: anything genuinely important that fits nowhere else.
 - traffic: one card from Vercel Web Analytics for the owner's main site: big = visitors today so far (e.g. "8,312"), delta against the same weekday's usual, spark = hourly visitors today, subtitle = top page and the biggest referrer. Only when it is unusual (well above or below normal) or the owner launched something; priority 20-45.
 - db: one card from Supabase advisors and logs: rows for security warnings (RLS off, exposed functions: tier 0, urgent if a table holding user data is public), performance warnings (tier 2), paused or unhealthy projects (tier 1). label = table or function, badge like "RLS" or "IDX". Nothing if clean.
@@ -163,6 +211,56 @@ pub fn mail_accounts(tools: &[String]) -> usize {
     servers.sort();
     servers.dedup();
     servers.len()
+}
+
+/// Calendar tools only, for the quick pass.
+pub fn calendar_tools(tools: &[String]) -> Vec<String> {
+    tools
+        .iter()
+        .filter(|t| {
+            let l = t.to_lowercase();
+            l.contains("calendar") && !l.contains("free_busy")
+        })
+        .cloned()
+        .collect()
+}
+
+pub const QUICK_SCHEMA: &str = r#"{
+  "type": "object",
+  "properties": {
+    "events": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string", "description": "cal: + the event id exactly as the connector gives it"},
+          "title": {"type": "string"},
+          "at": {"type": "string", "description": "ISO 8601 start with offset"},
+          "end": {"type": "string", "description": "ISO 8601 end with offset"},
+          "who": {"type": "string", "description": "Up to 3 attendee first names, comma separated"},
+          "where": {"type": "string", "description": "Room, address, or the video service (Meet, Zoom, Teams)"},
+          "src": {"type": "string", "enum": ["gcal", "outlook"]}
+        },
+        "required": ["id", "title", "at"]
+      }
+    }
+  },
+  "required": ["events"]
+}"#;
+
+/// The quick pass between smart runs: plain calendar facts, no judgement.
+pub fn quick(now: DateTime<Local>, private_terms: &[String]) -> String {
+    let mut p = format!(
+        "It is {}. Using only the calendar tools, list every event on every connected calendar from now until 12 hours \
+         from now, plus the first event tomorrow. Skip declined and cancelled events and all-day placeholders. Copy the \
+         facts as they are: no summaries, no advice. Do not read anything except the calendars.",
+        now.format("%A %B %-d, %Y, %-I:%M %p (UTC%:z)")
+    );
+    if !private_terms.is_empty() {
+        p.push_str(&format!(" Leave out any event involving: {}.", private_terms.join(", ")));
+    }
+    p
 }
 
 /// Human-readable connector names from MCP tool names

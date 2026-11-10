@@ -426,6 +426,8 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
       if (c->wx == Wx::Snow) return Mood::Cold;
       break;
     case Kind::Chat:
+    case Kind::Teams:
+    case Kind::Support:
     case Kind::Mail:
     case Kind::Review:
       for (int i = 0; i < c->nrows; i++)

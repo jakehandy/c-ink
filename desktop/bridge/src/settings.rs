@@ -20,6 +20,16 @@ pub struct Settings {
     pub model: String,
     /// Minutes between syncs (device and digest).
     pub refresh_min: u32,
+    /// Minutes between Claude's smart check-ins after the morning plan.
+    /// 0 = the morning plan only.
+    pub smart_every_min: u32,
+    /// Between check-ins, re-read the calendars every refresh (a small, fast run)
+    /// so meeting times, new invites and cancellations show up right away.
+    pub quick_calendar: bool,
+    /// Bumped when a default changes, so old settings files can be migrated.
+    /// Missing in files from before versioning, so it reads as 0 there.
+    #[serde(default)]
+    pub version: u32,
     /// Screen kind -> enabled.
     pub screens: BTreeMap<String, bool>,
     /// A sentence or two about the user, for Claude's judgement ("I run eng at...").
@@ -30,7 +40,8 @@ pub struct Settings {
     pub vips: Vec<String>,
     /// Free-form extra instructions for the digest.
     pub instructions: String,
-    /// Quiet hours (start hour, end hour), local time. None = always on.
+    /// Quiet hours (start hour, end hour), local time: the badge shows the
+    /// good night screen and nothing syncs. None = always on.
     pub quiet: Option<(u8, u8)>,
     /// Never use the panel's accent color.
     pub mono: bool,
@@ -96,12 +107,15 @@ impl Default for Settings {
             claude_path: String::new(),
             model: "sonnet".into(),
             refresh_min: 15,
+            smart_every_min: 60,
+            quick_calendar: true,
+            version: SETTINGS_VERSION,
             screens,
             about: String::new(),
             private_terms: vec![],
             vips: vec![],
             instructions: String::new(),
-            quiet: Some((23, 7)),
+            quiet: Some((22, 7)),
             mono: false,
             flip: false,
             port: 7787,
@@ -125,7 +139,18 @@ impl Default for Settings {
     }
 }
 
+/// Version 2: quiet hours default to 10 PM - 7 AM (was 11 PM).
+const SETTINGS_VERSION: u32 = 2;
+
 impl Settings {
+    /// Moves old defaults the owner never changed to the new ones.
+    fn migrate(&mut self) {
+        if self.version < 2 && self.quiet == Some((23, 7)) {
+            self.quiet = Some((22, 7));
+        }
+        self.version = SETTINGS_VERSION;
+    }
+
     pub fn dir() -> PathBuf {
         dirs::config_dir().unwrap_or_else(|| PathBuf::from(".")).join("C-Ink")
     }
@@ -144,6 +169,7 @@ impl Settings {
                     v.screens.entry(k.key.to_string()).or_insert(k.default_on);
                 }
                 v.refresh_min = v.refresh_min.clamp(5, 240);
+                v.migrate();
                 v
             }
             Err(_) => Settings::default(),
@@ -182,3 +208,20 @@ fn restrict(p: &std::path::Path) {
 }
 #[cfg(not(unix))]
 fn restrict(_: &std::path::Path) {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn old_quiet_default_moves_to_ten() {
+        let mut s: Settings = serde_json::from_str(r#"{"quiet": [23, 7]}"#).unwrap();
+        assert_eq!(s.version, 0);
+        assert_eq!(s.smart_every_min, 60);
+        s.migrate();
+        assert_eq!(s.quiet, Some((22, 7)));
+        let mut mine: Settings = serde_json::from_str(r#"{"quiet": [21, 6], "version": 1}"#).unwrap();
+        mine.migrate();
+        assert_eq!(mine.quiet, Some((21, 6)));
+    }
+}

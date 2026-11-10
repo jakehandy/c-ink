@@ -13,7 +13,7 @@ void config_defaults(Config& c) {
   c.version = kVersion;
   c.bridge_port = 7787;
   c.refresh_min = 15;
-  c.quiet_start = 23;
+  c.quiet_start = 22;
   c.quiet_end = 7;
   strcpy(c.tz, "UTC0");
 }

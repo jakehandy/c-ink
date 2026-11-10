@@ -30,6 +30,8 @@ enum class Kind : uint8_t {
   Claude,     // Claude Code: sessions waiting on you, what got built, tokens
   Cloud,      // Cloudflare: alerts and Workers errors
   Parcel,     // deliveries from Shop and Link
+  Support,    // Intercom: customer conversations waiting on you
+  Teams,      // Microsoft Teams: chats and channel mentions
   Count
 };
 static_assert((int)Kind::Count <= 32, "disabled masks are 32 bits");

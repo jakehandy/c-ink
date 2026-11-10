@@ -204,7 +204,7 @@
    "t": "“Low Tide” is climbing",
    "big": "12.4k",
    "dl": "+31% this week",
-   "s": "Released 6 days ago. Spotify is 72% of plays.",
+   "s": "Your new single, out 6 days",
    "sp": [
     20,
     22,
@@ -472,6 +472,75 @@
     {
      "l": "Usage",
      "d": "Workers requests at 80% of plan, 6:10 AM",
+     "tr": 2
+    }
+   ]
+  },
+  {
+   "id": "intercom:inbox",
+   "k": "support",
+   "p": 47,
+   "src": "intercom",
+   "t": "5 customers waiting",
+   "sh": "5 customers waiting",
+   "s": "Oldest waiting 2 days",
+   "sec": [
+    "OVERDUE",
+    "YOURS",
+    "TEAM"
+   ],
+   "r": [
+    {
+     "l": "Northwind",
+     "d": "Invoices doubled after the plan change",
+     "g": "2d",
+     "tr": 0,
+     "u": true
+    },
+    {
+     "l": "Maya, Lumen",
+     "d": "SSO setup fails on Okta, blocked",
+     "g": "5h",
+     "tr": 0
+    },
+    {
+     "l": "Kestrel",
+     "d": "Wants the annual price before Friday",
+     "g": "3h",
+     "tr": 1
+    },
+    {
+     "l": "Two new trials",
+     "d": "Asking how import works",
+     "g": "2",
+     "tr": 2
+    }
+   ]
+  },
+  {
+   "id": "teams:triage",
+   "k": "teams",
+   "p": 44,
+   "src": "teams",
+   "t": "Teams",
+   "sh": "Teams: 1 needs you",
+   "s": "1 needs you  ·  2 today",
+   "r": [
+    {
+     "l": "Finance sync",
+     "d": "Ravi needs the Q4 headcount number by 4",
+     "g": "!",
+     "tr": 0
+    },
+    {
+     "l": "Dana",
+     "d": "Can you review the vendor contract?",
+     "g": "DM",
+     "tr": 1
+    },
+    {
+     "l": "Ops leads",
+     "d": "Offsite moved to the 18th",
      "tr": 2
     }
    ]

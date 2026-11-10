@@ -27,7 +27,7 @@ constexpr int BAR_Y = 34;        // status bar baseline
 constexpr int BAR_RULE = 50;
 constexpr int HERO_Y = 62;
 constexpr int NEXT_ROW_H = 40;   // one "up next" row
-constexpr int CLAWD_CELL = 4;    // the small Clawd on the up next rule: 72 x 40
+constexpr int CLAWD_CELL = 6;    // the small Clawd on the up next rule: 72 x 48
 constexpr int TRACK_CAPS = 6;    // 1.5 px letterspacing for small caps
 
 Ink accent_ink(const Status& st) { return st.mono ? Ink::Black : Ink::Accent; }
@@ -512,18 +512,22 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
       if (is_countdown(*c, st) && dt <= 5 * 60) return Mood::Surprised;
       if (is_countdown(*c, st) && dt <= 15 * 60) return Mood::Busy;
       break;
-    case Kind::Commute: return Mood::Walking;
-    case Kind::Wins: return c->nrows >= 3 ? Mood::Celebrate : Mood::Proud;
+    case Kind::Commute: return strstr(c->delta, "foot") ? Mood::Walking : Mood::Skate;
+    case Kind::Wins: return c->nrows >= 3 ? Mood::Celebrate : Mood::Flag;
+    case Kind::Ship:
+    case Kind::Db:
+    case Kind::Cloud: return Mood::Builder;
+    case Kind::Review: return Mood::Detective;
     case Kind::Music: return Mood::Music;
     case Kind::News:
     case Kind::Story: return Mood::Reading;
-    case Kind::Focus: return Mood::Focused;
+    case Kind::Focus: return Mood::Lift;
     case Kind::Parcel: return Mood::Boop;
     case Kind::Brief: return st.now && local(st.now).hour < 12 ? Mood::Coffee : Mood::Wink;
     case Kind::Claude: {
       for (int i = 0; i < c->nrows; i++)
         if (c->rows[i].tier == 0) return Mood::Wave;
-      return Mood::Typing;
+      return Mood::Wizard;
     }
     case Kind::Money:
       if (c->delta[0] == '+') return Mood::CoinHop;
@@ -540,16 +544,15 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
     case Kind::Teams:
     case Kind::Support:
     case Kind::Mail:
-    case Kind::Review:
       for (int i = 0; i < c->nrows; i++)
         if (c->rows[i].tier == 0) return Mood::Busy;
       break;
     default: break;
   }
-  static const Mood idle[5] = {Mood::Calm, Mood::LookLeft, Mood::LookRight, Mood::Wink, Mood::Peek};
+  static const Mood idle[6] = {Mood::Calm, Mood::LookLeft, Mood::LookRight, Mood::Wink, Mood::Peek, Mood::Float};
   uint32_t h = 2166136261u;
   for (const char* p = c->id; *p; p++) h = (h ^ (uint8_t)*p) * 16777619u;
-  return idle[h % 5];
+  return idle[h % 6];
 }
 
 // Clawd standing on a rule at y, at the right margin.
@@ -611,7 +614,7 @@ void next_event_footer(Canvas& cv, const Card* e, const Status& st, const char* 
 
 void screen_empty(Canvas& cv, const Digest& d, const Status& st, uint32_t disabled) {
   bool never = st.net == Net::NeverSynced || !st.last_sync;
-  big_clawd(cv, 160, 12, never ? Mood::Puzzled : Mood::Happy, st);
+  big_clawd(cv, 160, 16, never ? Mood::Puzzled : Mood::Happy, st);
   center(cv, font_big, 400, never ? "Hello." : "All clear.", Ink::Black);
   const char* line = d.headline[0] ? d.headline : "Nothing needs you right now.";
   if (never) line = "Waiting for the first sync from C-Ink Settings on your computer.";
@@ -625,7 +628,7 @@ void screen_empty(Canvas& cv, const Digest& d, const Status& st, uint32_t disabl
 
 void screen_night(Canvas& cv, const Digest& d, const Status& st, uint32_t disabled) {
   icon_moon(cv, W - M - 56, 64, 56, Ink::Black);
-  big_clawd(cv, 210, 12, Mood::Sleepy, st);
+  big_clawd(cv, 210, 16, Mood::Sleepy, st);
   center(cv, font_big, 440, "Good night.", Ink::Black);
   const Card* e = next_event(d, st.now, disabled);
   char buf[200];
@@ -658,7 +661,7 @@ void step(Canvas& cv, int n, int y, const char* title, const char* body) {
 }
 
 void screen_setup(Canvas& cv, const Status& st) {
-  clawd(cv, M, 70, 6, Mood::Wave, accent_ink(st));
+  clawd(cv, M + 4 * 8, 70, 8, Mood::Wave, accent_ink(st));
   cv.text(font_title, M, 200, "Hi, I'm C-Ink.", Ink::Black);
   cv.wrap(font_sub, M, 244, W - 2 * M, 34, 2, "Three steps and I'll show what matters in your day.", Ink::Black);
   step(cv, 1, 350, "Get C-Ink Settings", "The small Mac / Windows app from github.com/jakehandy/c-ink.");
@@ -679,7 +682,7 @@ void kv(Canvas& cv, int y, const char* k, const char* v) {
 }
 
 void screen_info(Canvas& cv, const Digest& d, const Status& st) {
-  clawd(cv, W - M - clawd_w(4), 76, 4, Mood::Calm, accent_ink(st));
+  clawd(cv, W - M - clawd_w(6), 76, 6, Mood::Calm, accent_ink(st));
   cv.text(font_title_s, M, 112, "This TICKEY", Ink::Black);
   char buf[64], a[24];
   int y = 176;

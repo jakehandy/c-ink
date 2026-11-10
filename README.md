@@ -97,7 +97,7 @@ Buttons: **Up/Down** page through every card in Up next, **Back** returns to the
 
 <img src="docs/screens/clawd.png" width="240" align="right" alt="All of Clawd's poses">
 
-Clawd sits on the right end of the Up next line and changes pose with the top card: hopping when a meeting is five minutes out, tapping a foot when it is fifteen, typing while a Claude Code session works, waving when one needs you, peeking over the paper with the news, sunglasses on a clear day, a rain cloud when it is wet, walking for a commute, celebrating a good week, a coin hop when revenue is up, a sweat drop when three things are on fire, asleep at night, puzzled offline. 30 poses in all, drawn from the same quadrant-block sprite and animations Claude Code uses for Clawd in the terminal.
+Clawd sits on the right end of the Up next line and changes pose with the top card: hopping when a meeting is five minutes out, tapping a foot when it is fifteen, a wizard hat while a Claude Code session works, waving when one needs you, a fedora and magnifier for pull requests, a hard hat for deploys and databases, peeking over the paper with the news, sunglasses on a clear day, a rain cloud when it is wet, skateboarding to a meeting, a checkered flag or confetti for a good week, dumbbells for a focus block, a coin hop when revenue is up, a sweat drop when three things are on fire, asleep at night, puzzled offline. 37 poses in all, of the 12 x 8 pixel Clawd with his solid black eyes, drawn by `tools/clawdgen.py`.
 
 <br clear="right">
 

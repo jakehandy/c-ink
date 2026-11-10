@@ -7,6 +7,7 @@ pub mod device;
 pub mod digest;
 pub mod kinds;
 pub mod news;
+pub mod photo;
 pub mod preview;
 pub mod prompt;
 pub mod relay;

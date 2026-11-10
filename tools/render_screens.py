@@ -33,6 +33,7 @@ SHOTS = [
     ("ship", "vercel:web", [], "Ship status"),
     ("claude-code", "claude:code", [], "Claude Code"),
     ("news", "news:morning", [], "Morning news"),
+    ("top-story", "story:20261110", [], "Top story"),
     ("weather", "weather:now", [], "Weather"),
     ("deliveries", "parcel:today", [], "Deliveries"),
     ("support", "intercom:inbox", [], "Customer inbox (Intercom)"),
@@ -79,6 +80,8 @@ def render(name, raise_id, extra, tmp):
                 c.pop("u", None)
                 for r in c.get("r", []):
                     r.pop("u", None)
+            # The device keeps 24 cards; make sure the raised one is among them.
+            doc["cards"].sort(key=lambda c: c["id"] != raise_id)
         src = os.path.join(tmp, name + ".json")
         json.dump(doc, open(src, "w"))
     out = os.path.join(OUT, name + ".png")

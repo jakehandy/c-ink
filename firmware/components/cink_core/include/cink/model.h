@@ -29,9 +29,10 @@ enum class Kind : uint8_t {
   Weather,    // forecast for the owner's location (built by the bridge)
   Claude,     // Claude Code: sessions waiting on you, what got built, tokens
   Cloud,      // Cloudflare: alerts and Workers errors
-  Parcel,     // deliveries from Shop and Link
+  Parcel,     // deliveries from Shop and order emails
   Support,    // Intercom: customer conversations waiting on you
   Teams,      // Microsoft Teams: chats and channel mentions
+  Story,      // one big news story with a photo, cycling in through the day
   Count
 };
 static_assert((int)Kind::Count <= 32, "disabled masks are 32 bits");
@@ -92,6 +93,18 @@ struct DeviceSettings {
   char tz[64];
 };
 
+// One dithered photo per digest, for the card whose id it names (the big news
+// story). Two 1-bit planes like the Canvas, row-major, MSB first; drawn at 2x.
+struct Image {
+  static constexpr int MAX_W = 216;
+  static constexpr int MAX_H = 120;
+  static constexpr int BYTES = MAX_W / 8 * MAX_H;
+  char card[40];
+  uint16_t w, h;  // 0 = no image; w is a multiple of 8
+  uint8_t black[BYTES];
+  uint8_t accent[BYTES];
+};
+
 struct Digest {
   static constexpr int MAX_CARDS = 24;
   int version;
@@ -101,7 +114,11 @@ struct Digest {
   Card cards[MAX_CARDS];
   uint8_t ncards;
   DeviceSettings cfg;
+  Image img;
 };
+
+// The digest's photo for card c, or null.
+const Image* image_for(const Digest& d, const Card& c);
 
 // Parses the wire JSON into `out`. Returns false (and leaves a reason in err)
 // when the document is unusable. Unknown fields are ignored so older devices

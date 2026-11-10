@@ -2,7 +2,7 @@
 
 ## Wire digest (JSON, version 1)
 
-Plaintext, before sealing. Max 20 KB. Short keys keep it small; the device ignores keys it does not know.
+Plaintext, before sealing. Cards max 20 KB, plus at most one photo (`img`, about 8.7 KB); the device caches up to 32 KB. Short keys keep it small; the device ignores keys it does not know.
 
 ```jsonc
 {
@@ -11,9 +11,10 @@ Plaintext, before sealing. Max 20 KB. Short keys keep it small; the device ignor
   "hz": 1794393900,           // trust horizon (default gen + 12 h)
   "hl": "Two meetings left, one fire in prod.",
   "cfg": { "rf": 15, "dis": 0, "q": [23, 7], "mono": false, "rot": 0, "tz": "PST8PDT,M3.2.0,M11.1.0" },
+  "img": { "id": "story:20261110", "w": 216, "h": 120, "k": "<base64>", "a": "<base64>" },  // optional
   "cards": [
     {
-      "id": "cal:abc", "k": "event",          // kind: event review chat mail task ship money music quest focus brief doc other traffic db commute wins news weather claude cloud parcel support teams
+      "id": "cal:abc", "k": "event",          // kind: event review chat mail task ship money music quest focus brief doc other traffic db commute wins news weather claude cloud parcel support teams story
       "t": "Design review", "sh": "Design review",
       "s": "with Priya and Marco", "b": "Priya wants a yes or no on pricing.", "m": "Meet · 30 min",
       "p": 70, "u": false,                    // priority 0-100, urgent
@@ -32,7 +33,9 @@ Plaintext, before sealing. Max 20 KB. Short keys keep it small; the device ignor
 
 `src` picks the small brand mark drawn in the eyebrow and Up next row; without it the device uses the kind's usual source, then a line icon.
 
-A `commute` card's `at` is the leave-by time and `en` the meeting start; the device drops it 10 minutes after leave-by.
+A `commute` card's `at` is the leave-by time and `en` the meeting start; the device drops it 10 minutes after leave-by. `big` is the trip in minutes and `dl` the mode ("by car").
+
+`img` is the Top story's photo, already dithered by the bridge: `k` (black) and `a` (accent, optional) are 1-bit planes, row-major, most significant bit first, `w / 8 * h` bytes each, base64. The device draws it at 2x on the card whose `id` matches. `w` is a multiple of 8, at most 216; `h` at most 120. A `story` card ranks 40 higher for 15 minutes in every 45 (slots aligned to the clock) and 10 lower otherwise, so it cycles in through the day.
 
 ## Sealed blob
 

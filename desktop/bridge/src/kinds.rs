@@ -44,10 +44,11 @@ pub const KINDS: &[KindInfo] = &[
     KindInfo { key: "parcel", name: "Deliveries", blurb: "Packages arriving today or delayed, from Shop and from order and shipping emails in your inbox.", source: "shop", connectors: &["shop", "gmail", "mail"], default_on: true },
     KindInfo { key: "support", name: "Customer inbox", blurb: "Intercom conversations waiting on you or your team, oldest wait first, with what each customer needs.", source: "intercom", connectors: &["intercom"], default_on: true },
     KindInfo { key: "teams", name: "Teams", blurb: "Teams chats and channel mentions that need you, grouped into now, today and when you can.", source: "m365", connectors: &["microsoft", "teams"], default_on: true },
+    KindInfo { key: "story", name: "Top story", blurb: "The day's one big story, full screen with its photo dithered in color. Cycles in for 15 minutes every 45.", source: "news", connectors: &[], default_on: true },
 ];
 
 /// Screens the bridge builds itself, so Claude is told not to make them.
-pub const BUILTIN: &[&str] = &["weather", "claude", "cloud", "news"];
+pub const BUILTIN: &[&str] = &["weather", "claude", "cloud", "news", "story"];
 
 pub fn index_of(key: &str) -> Option<usize> {
     KINDS.iter().position(|k| k.key == key)
@@ -107,7 +108,7 @@ pub const SOURCES: &[SourceInfo] = &[
     SourceInfo { id: "shop", category: "shopping", name: "Shop", icon: "shopify", blurb: "Orders and deliveries tracked in the Shop app.", connect: Connect::Connector(&["shop"]), also: &[] },
     SourceInfo { id: "tavern", category: "life", name: "Tavern", icon: "tavern", blurb: "Your tabletop group's campaign home. Your next session, where the last one ended, and your character.", connect: Connect::Connector(&["tavern"]), also: &[] },
     SourceInfo { id: "weather", category: "life", name: "Weather", icon: "weather", blurb: "Forecast from Open-Meteo for the place you set. No account needed.", connect: Connect::Builtin, also: &[] },
-    SourceInfo { id: "news", category: "life", name: "News", icon: "news", blurb: "Claude researches the web once a morning with your prompt.", connect: Connect::Builtin, also: &[] },
+    SourceInfo { id: "news", category: "life", name: "News", icon: "news", blurb: "Claude researches the web once a morning with your prompt, and picks the day's top story.", connect: Connect::Builtin, also: &[] },
     SourceInfo { id: "claude", category: "builtin", name: "Claude", icon: "claude", blurb: "Built from everything above: the morning plan, the brief, the wrap and anything that fits nowhere else.", connect: Connect::Local, also: &[] },
 ];
 

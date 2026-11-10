@@ -270,6 +270,39 @@ void hero_commute(Canvas& cv, const Card& c, const Status& st, Box b) {
   }
 }
 
+// A dithered photo at 2x, accent pixels in black when the panel is mono.
+void draw_image(Canvas& cv, const Image& im, int x, int y, const Status& st) {
+  const int stride = im.w / 8;
+  const Ink acc = accent_ink(st);
+  for (int j = 0; j < im.h; j++)
+    for (int i = 0; i < im.w; i++) {
+      int bit = 0x80 >> (i & 7), at = j * stride + i / 8;
+      if (im.accent[at] & bit) cv.fill(x + 2 * i, y + 2 * j, 2, 2, acc);
+      else if (im.black[at] & bit) cv.fill(x + 2 * i, y + 2 * j, 2, 2, Ink::Black);
+    }
+}
+
+// The big story: photo across the top, a large headline, one line of dek,
+// and where it is from. Without a photo the headline takes the room.
+void hero_story(Canvas& cv, const Card& c, const Image* im, const Status& st, Box b) {
+  int y = b.y + 22;
+  card_eyebrow(cv, c, st, b.x, y, b.w, c.meta);
+  y += 18;
+  if (im) {
+    draw_image(cv, *im, b.x + (b.w - 2 * im->w) / 2, y, st);
+    y += 2 * im->h + 56;
+  } else {
+    y += 52;
+  }
+  int bottom = b.y + b.h - 4;
+  int lines = (bottom - y) / 52 + 1;
+  if (lines > 3) lines = 3;
+  y = title_block(cv, c.title, b.x, y, b.w, lines < 1 ? 1 : lines);
+  if (c.subtitle[0] && y + 40 <= bottom)
+    cv.wrap(font_body, b.x, y + 38, b.w, 30, (bottom - y - 38) / 30 + 1 > 2 ? 2 : (bottom - y - 38) / 30 + 1,
+            c.subtitle, Ink::Black);
+}
+
 const char* tier_name(int t) {
   switch (t) {
     case 0: return "NEEDS YOU NOW";
@@ -420,11 +453,12 @@ bool is_countdown(const Card& c, const Status& st) {
   return c.at && dt > 0 && dt <= 99 * 60 && (c.kind == Kind::Event || c.kind == Kind::Quest);
 }
 
-void hero(Canvas& cv, const Card& c, const Status& st, Box b) {
+void hero(Canvas& cv, const Digest& d, const Card& c, const Status& st, Box b) {
   if (c.urgent) cv.fill(0, b.y + 4, 8, 96, accent_ink(st));
   char ctx[48];
   context_for(c, st, ctx, sizeof ctx);
-  if (c.kind == Kind::Commute) hero_commute(cv, c, st, b);
+  if (c.kind == Kind::Story) hero_story(cv, c, image_for(d, c), st, b);
+  else if (c.kind == Kind::Commute) hero_commute(cv, c, st, b);
   else if (is_countdown(c, st)) hero_countdown(cv, c, st, b);
   else if (c.big[0]) hero_metric(cv, c, st, b, ctx);
   else if (c.nrows) {
@@ -481,7 +515,8 @@ Mood pick_mood(const Digest& d, const Ranked& r, const Card* c, const Status& st
     case Kind::Commute: return Mood::Walking;
     case Kind::Wins: return c->nrows >= 3 ? Mood::Celebrate : Mood::Proud;
     case Kind::Music: return Mood::Music;
-    case Kind::News: return Mood::Reading;
+    case Kind::News:
+    case Kind::Story: return Mood::Reading;
     case Kind::Focus: return Mood::Focused;
     case Kind::Parcel: return Mood::Boop;
     case Kind::Brief: return st.now && local(st.now).hour < 12 ? Mood::Coffee : Mood::Wink;
@@ -685,7 +720,7 @@ int render(Canvas& cv, const Digest& d, const Status& st, const View& v, uint32_
   int cur = v.screen == Screen::Browse ? ((v.index % r.n) + r.n) % r.n : 0;
   const Card& c = d.cards[r.idx[cur]];
   int hero_bottom = up_next(cv, d, r, cur, st, pick_mood(d, r, &c, st));
-  hero(cv, c, st, {M, HERO_Y, W - 2 * M, hero_bottom - HERO_Y});
+  hero(cv, d, c, st, {M, HERO_Y, W - 2 * M, hero_bottom - HERO_Y});
   return r.n;
 }
 

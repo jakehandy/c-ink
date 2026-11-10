@@ -329,7 +329,7 @@ impl Bridge {
                 Err(e) => log::warn!("cloudflare traffic: {e:#}"),
             }
         }
-        if s.enabled("news") {
+        if s.enabled("news") || s.enabled("story") {
             match crate::news::get(s, now) {
                 Ok(c) => out.extend(c),
                 Err(e) => log::warn!("news: {e:#}"),

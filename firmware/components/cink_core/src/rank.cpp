@@ -4,6 +4,8 @@ namespace cink {
 
 static const int64_t MIN = 60, HOUR = 3600;
 
+static bool story_slot(int64_t now) { return (now / (15 * MIN)) % 3 == 0; }
+
 static int64_t effective_end(const Digest& d, const Card& c) {
   // A commute card is about leaving, so it goes 10 minutes after leave-by
   // even though its "end" (the meeting start) is later.
@@ -31,6 +33,8 @@ int score_card(const Digest& d, const Card& c, int64_t now) {
     else if (dt > 12 * HOUR) s -= 15;
   }
   if (c.urgent) s += 12;
+  // The big story cycles in: on top for one 15-minute slot in every three.
+  if (c.kind == Kind::Story) s += story_slot(now) ? 40 : -10;
   // Untimed items (a Slack ping, a PR) go stale as the digest ages: the
   // longer since the last sync, the likelier someone already handled it.
   int64_t age = now - d.generated;
@@ -69,6 +73,7 @@ int64_t next_change(const Digest& d, int64_t now, uint32_t disabled) {
     if (disabled & (1u << (int)c.kind)) continue;
     consider(c.start);
     consider(effective_end(d, c));
+    if (c.kind == Kind::Story) consider((now / (15 * MIN) + 1) * 15 * MIN);
     if (c.at) {
       for (int s : steps) consider(c.at - s * MIN);
       // Staleness penalties step every 30 minutes after 3 h.

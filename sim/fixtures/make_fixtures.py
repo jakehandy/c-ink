@@ -156,6 +156,15 @@ day = {
     ],
 }
 
+# The Top story and its dithered photo (tools/story_photo.py draws the scene).
+day["cards"].append(
+    {"id": "story:20261110", "k": "story", "p": 30, "st": t(hours=-8), "en": at(0, 21, 0),
+     "t": "Bay's first all-electric ferry starts carrying riders tonight",
+     "sh": "Electric ferry launches", "s": "Twelve crossings a day between the Ferry Building and Oakland, at the same fare.",
+     "m": "Bay Ledger"})
+with open(os.path.join(HERE, "story_img.json")) as f:
+    day["img"] = dict(json.load(f), id="story:20261110")
+
 empty = {"v": 1, "gen": t(minutes=-1), "hz": t(hours=12),
          "hl": "Calendar is clear until tomorrow and nobody is waiting on you.",
          "cards": [{"id": "cal:standup", "k": "event", "p": 30, "at": at(1, 9, 30), "t": "Standup",

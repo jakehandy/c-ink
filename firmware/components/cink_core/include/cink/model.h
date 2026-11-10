@@ -59,6 +59,18 @@ struct Card {
   uint8_t nspark;
 };
 
+// Settings from C-Ink Settings that ride along with every digest, so changes
+// reach the device over Wi-Fi without plugging it in.
+struct DeviceSettings {
+  bool present;
+  int refresh_min;     // 0 = not set
+  uint32_t disabled;
+  int8_t quiet_start;  // -1 = no quiet hours
+  int8_t quiet_end;
+  bool mono;
+  char tz[64];
+};
+
 struct Digest {
   static constexpr int MAX_CARDS = 24;
   int version;
@@ -67,6 +79,7 @@ struct Digest {
   char headline[120];  // Claude's one-line read on the day
   Card cards[MAX_CARDS];
   uint8_t ncards;
+  DeviceSettings cfg;
 };
 
 // Parses the wire JSON into `out`. Returns false (and leaves a reason in err)

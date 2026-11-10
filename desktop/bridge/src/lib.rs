@@ -1,0 +1,17 @@
+//! C-Ink bridge: Claude Code in, sealed e-ink digests out.
+
+pub mod claude;
+pub mod device;
+pub mod digest;
+pub mod kinds;
+pub mod preview;
+pub mod prompt;
+pub mod relay;
+pub mod seal;
+pub mod server;
+pub mod service;
+pub mod settings;
+pub mod tz;
+
+pub use service::Bridge;
+pub use settings::Settings;

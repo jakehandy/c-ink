@@ -75,6 +75,31 @@ static void parse_card(Json& j, Card& c) {
   }
 }
 
+static void parse_cfg(Json& j, DeviceSettings& c) {
+  c.present = true;
+  c.quiet_start = c.quiet_end = -1;
+  char key[8];
+  if (!j.obj_begin()) return;
+  while (j.obj_next(key, sizeof key)) {
+    int64_t n;
+    if (!strcmp(key, "rf")) { if (j.i64(n)) c.refresh_min = clamp(n, 5, 240); }
+    else if (!strcmp(key, "dis")) { if (j.i64(n)) c.disabled = (uint32_t)n; }
+    else if (!strcmp(key, "mono")) j.boolean(c.mono);
+    else if (!strcmp(key, "tz")) j.str(c.tz, sizeof c.tz);
+    else if (!strcmp(key, "q")) {
+      int i = 0;
+      if (j.arr_begin())
+        while (j.arr_next()) {
+          if (j.i64(n)) {
+            if (i == 0) c.quiet_start = (int8_t)clamp(n, -1, 23);
+            else if (i == 1) c.quiet_end = (int8_t)clamp(n, -1, 23);
+          }
+          i++;
+        }
+    } else j.skip();
+  }
+}
+
 bool parse_digest(const char* json, size_t len, Digest& d, const char** err) {
   memset(&d, 0, sizeof d);
   Json j(json, len);
@@ -87,6 +112,7 @@ bool parse_digest(const char* json, size_t len, Digest& d, const char** err) {
     else if (!strcmp(key, "gen")) j.i64(d.generated);
     else if (!strcmp(key, "hz")) j.i64(d.horizon);
     else if (!strcmp(key, "hl")) j.str(d.headline, sizeof d.headline);
+    else if (!strcmp(key, "cfg")) parse_cfg(j, d.cfg);
     else if (!strcmp(key, "cards")) {
       saw_cards = true;
       if (j.arr_begin())

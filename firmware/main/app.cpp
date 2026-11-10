@@ -78,6 +78,23 @@ static void load_digest() {
   g_have_digest = parse_digest(g_plain_buf, (size_t)m, g_digest, &err);
   if (!g_have_digest) ESP_LOGW(TAG, "cached digest rejected: %s", err ? err : "?");
   memset(g_plain_buf, 0, (size_t)m);  // plaintext only lives in the parsed struct
+  if (g_have_digest && g_digest.cfg.present) {
+    // Settings changed in C-Ink Settings arrive with the digest.
+    const DeviceSettings& d = g_digest.cfg;
+    Config next = g_cfg;
+    if (d.refresh_min) next.refresh_min = (uint16_t)d.refresh_min;
+    next.disabled = d.disabled;
+    next.quiet_start = d.quiet_start;
+    next.quiet_end = d.quiet_end;
+    next.mono = d.mono;
+    if (d.tz[0]) strncpy(next.tz, d.tz, sizeof next.tz - 1);
+    if (memcmp(&next, &g_cfg, sizeof next) != 0) {
+      ESP_LOGI(TAG, "applying settings from digest");
+      g_cfg = next;
+      config_save(g_cfg);
+      apply_tz();
+    }
+  }
 }
 
 static bool in_quiet(int64_t t) {

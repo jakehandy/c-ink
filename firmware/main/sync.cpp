@@ -127,7 +127,7 @@ SyncResult sync_now(const Config& c, char* ssid_out, char* ip_out, char* source_
     ESP_LOGI(TAG, "bridge %s -> %d (%u bytes)", ip, st, (unsigned)body.len);
     if (st == 304) result = SyncResult::Unchanged;
     else if (st == 200) result = accept(c, body.len);
-    if (result != SyncResult::Failed) snprintf(source_out, 48, "%s", c.bridge_host[0] ? c.bridge_host : ip);
+    if (result != SyncResult::Failed) strlcpy(source_out, c.bridge_host[0] ? c.bridge_host : ip, 48);
   }
   if (result == SyncResult::Failed && c.relay_url[0]) {
     snprintf(url, sizeof url, "%s/v1/d/%s", c.relay_url, device_id());
@@ -137,7 +137,7 @@ SyncResult sync_now(const Config& c, char* ssid_out, char* ip_out, char* source_
     else if (st == 200) result = accept(c, body.len);
     if (result != SyncResult::Failed) {
       const char* host = strstr(c.relay_url, "://");
-      snprintf(source_out, 48, "%s", host ? host + 3 : c.relay_url);
+      strlcpy(source_out, host ? host + 3 : c.relay_url, 48);
     }
   }
   net_down();

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>C-Ink Settings</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <aside class="nav">
+    <div class="brand"><span class="logo"></span>C-Ink</div>
+    <button data-page="today" class="active">Today</button>
+    <button data-page="claude">Claude</button>
+    <button data-page="screens">Screens</button>
+    <button data-page="device">Device</button>
+    <button data-page="privacy">Privacy</button>
+    <button data-page="away">Away mode</button>
+    <div class="nav-foot" id="nav-status"></div>
+  </aside>
+
+  <main>
+    <!-- TODAY -->
+    <section id="page-today" class="page active">
+      <header>
+        <div>
+          <h1>Today</h1>
+          <p class="sub" id="headline">Your TICKEY shows the most relevant card. Use the arrows to see the rest.</p>
+        </div>
+        <button class="primary" id="sync-btn">Sync now</button>
+      </header>
+      <div class="device-wrap">
+        <button class="arrow" id="prev" title="Previous card">&#8249;</button>
+        <div class="bezel"><img id="frame" alt="What your TICKEY is showing" width="720" height="480" /></div>
+        <button class="arrow" id="next" title="Next card">&#8250;</button>
+      </div>
+      <div class="frame-bar">
+        <div class="seg" id="screen-seg">
+          <button data-screen="0" class="on">Now</button>
+          <button data-screen="2">Device info</button>
+          <button data-screen="4">Night</button>
+          <button data-screen="3">Setup</button>
+        </div>
+        <label class="check"><input type="checkbox" id="paper" checked /> Paper colors</label>
+      </div>
+      <div class="facts" id="facts"></div>
+      <div class="error" id="run-error" hidden></div>
+    </section>
+
+    <!-- CLAUDE -->
+    <section id="page-claude" class="page">
+      <header><div><h1>Claude</h1>
+        <p class="sub">C-Ink runs your own Claude Code, signed in with your Claude account. Its connectors (Calendar, Slack, GitHub and the rest) are what C-Ink reads from.</p></div></header>
+      <div class="card" id="claude-card"><div class="spinner"></div></div>
+      <div class="card">
+        <h3>Model</h3>
+        <p class="hint">Each sync is one Claude Code run on your plan. Sonnet is the sweet spot; Haiku is lighter if you sync often.</p>
+        <div class="seg" id="model-seg">
+          <button data-model="haiku">Haiku</button>
+          <button data-model="sonnet">Sonnet</button>
+          <button data-model="opus">Opus</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>About you</h3>
+        <p class="hint">A line or two that helps Claude judge what matters, like your role and what you are focused on this month.</p>
+        <textarea id="about" rows="3" placeholder="I run product at a 20-person startup. This month is all about the launch."></textarea>
+      </div>
+    </section>
+
+    <!-- SCREENS -->
+    <section id="page-screens" class="page">
+      <header><div><h1>Screens</h1>
+        <p class="sub">Pick what can show up. Claude decides what is most relevant; your TICKEY re-ranks it through the day, even offline.</p></div>
+        <button id="recheck">Recheck connections</button></header>
+      <div id="screen-list" class="list"></div>
+      <p class="hint">Missing a service? Add it at <a href="#" data-open="https://claude.ai/settings/connectors">claude.ai/settings/connectors</a>, then recheck.</p>
+    </section>
+
+    <!-- DEVICE -->
+    <section id="page-device" class="page">
+      <header><div><h1>Device</h1>
+        <p class="sub">Plug your TICKEY in with USB-C to set it up. After that it syncs over Wi-Fi on its own.</p></div></header>
+
+      <div class="card">
+        <h3>Sync</h3>
+        <div class="row"><label>Refresh every</label>
+          <input type="range" id="refresh" min="5" max="60" step="5" /><span id="refresh-val" class="val"></span></div>
+        <div class="row"><label>Quiet hours</label>
+          <label class="check"><input type="checkbox" id="quiet-on" /> Sleep from</label>
+          <select id="quiet-a"></select><span>to</span><select id="quiet-b"></select></div>
+        <div class="row"><label>Color</label>
+          <label class="check"><input type="checkbox" id="mono" /> Black and white only (no accent color)</label></div>
+        <div class="row"><label>Startup</label>
+          <label class="check"><input type="checkbox" id="autostart" /> Open C-Ink at login (it lives in the menu bar / tray)</label></div>
+      </div>
+
+      <div class="card">
+        <h3>Set up a TICKEY</h3>
+        <div class="row"><label>Port</label><select id="port"></select><button id="ports-refresh" class="ghost">Refresh</button></div>
+        <div class="row"><label>Name</label><input id="dev-name" placeholder="Jake's TICKEY" /></div>
+        <div id="wifi-rows"></div>
+        <div class="row"><label></label><button id="wifi-add" class="ghost">+ Add another network</button></div>
+        <p class="hint">Add every network you use: home, office, your phone's hotspot. Passwords go straight to the device and are not stored here.</p>
+        <div class="actions">
+          <button class="primary" id="setup">Send to TICKEY</button>
+          <button id="update-dev">Update settings only</button>
+        </div>
+        <div class="note" id="setup-msg" hidden></div>
+      </div>
+
+      <div class="card">
+        <h3>Paired devices</h3>
+        <div id="devices" class="list"></div>
+      </div>
+
+      <div class="card">
+        <h3>Remote</h3>
+        <p class="hint">Press its buttons from here, or see exactly what it is displaying.</p>
+        <div class="actions">
+          <button data-press="up">&#9650; Up</button>
+          <button data-press="down">&#9660; Down</button>
+          <button data-press="back">&#9664; Back</button>
+          <button id="grab">Show its screen</button>
+        </div>
+        <img id="grabbed" hidden class="grabbed" alt="Frame read back from the device" />
+      </div>
+    </section>
+
+    <!-- PRIVACY -->
+    <section id="page-privacy" class="page">
+      <header><div><h1>Privacy</h1>
+        <p class="sub">C-Ink only lets Claude use read-only tools, seals every digest for your device with its own key, and never sends anything anywhere else.</p></div></header>
+      <div class="card">
+        <h3>Never show</h3>
+        <p class="hint">People or topics Claude must never read, mention or show. Anything that slips through is dropped again before it leaves this computer.</p>
+        <div class="chips" id="private"></div>
+      </div>
+      <div class="card">
+        <h3>Always matters</h3>
+        <p class="hint">People whose messages should always make the cut.</p>
+        <div class="chips" id="vips"></div>
+      </div>
+      <div class="card">
+        <h3>Extra instructions</h3>
+        <textarea id="instructions" rows="4" placeholder="Ignore #random. Treat anything from the board as urgent."></textarea>
+        <div class="actions"><button class="ghost" id="show-prompt">Show the full prompt</button></div>
+        <pre id="prompt" hidden></pre>
+      </div>
+    </section>
+
+    <!-- AWAY -->
+    <section id="page-away" class="page">
+      <header><div><h1>Away mode</h1>
+        <p class="sub">On your home or office Wi-Fi, the TICKEY fetches straight from this computer. To keep it syncing anywhere else, add a relay. It only ever stores encrypted blobs.</p></div></header>
+      <div class="card">
+        <div class="row"><label>Relay URL</label><input id="relay-url" placeholder="https://c-ink-relay.you.workers.dev" /></div>
+        <div class="row"><label>Write token</label><input id="relay-token" type="password" placeholder="the relay's WRITE_TOKEN secret" /></div>
+        <p class="hint">Deploy the tiny relay in <code>relay/</code> to Cloudflare Workers (free tier is plenty), then press "Update settings only" on the Device page so the TICKEY learns the URL.</p>
+        <div class="note" id="relay-status" hidden></div>
+      </div>
+      <div class="card">
+        <h3>Offline behaviour</h3>
+        <p class="hint">Each digest covers the next 12 hours. Away from any known Wi-Fi, the TICKEY keeps re-ranking it as meetings approach and expire, shows when it last synced, and backs off retries to save battery.</p>
+      </div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

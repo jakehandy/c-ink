@@ -13,7 +13,7 @@ Plaintext, before sealing. Max 20 KB. Short keys keep it small; the device ignor
   "cfg": { "rf": 15, "dis": 0, "q": [23, 7], "mono": false, "rot": 0, "tz": "PST8PDT,M3.2.0,M11.1.0" },
   "cards": [
     {
-      "id": "cal:abc", "k": "event",          // kind: event review chat mail task ship money music quest focus brief doc other traffic db commute wins news weather claude cloud parcel
+      "id": "cal:abc", "k": "event",          // kind: event review chat mail task ship money music quest focus brief doc other traffic db commute wins news weather claude cloud parcel support teams
       "t": "Design review", "sh": "Design review",
       "s": "with Priya and Marco", "b": "Priya wants a yes or no on pricing.", "m": "Meet · 30 min",
       "p": 70, "u": false,                    // priority 0-100, urgent

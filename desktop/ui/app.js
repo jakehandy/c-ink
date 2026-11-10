@@ -186,7 +186,7 @@ const mark = (icon, big) => el("span", { class: "mark" + (big ? " big" : ""), st
 const src = (id) => state.sources.find((s) => s.id === id);
 
 function stateLabel(s) {
-  if (s.id === "gmail" && s.accounts > 1) return `${s.accounts} accounts`;
+  if (s.how === "connector" && s.accounts > 1 && ["gmail", "gdrive", "gcal"].includes(s.id)) return `${s.accounts} accounts`;
   if (s.id === "cloudflare" && s.connected) return settings.cloudflare_account_name || "Connected";
   if (s.id === "weather" && s.connected) return settings.weather_place?.name || "Set";
   if (s.id === "github" && s.connected && !s.accounts) return "GitHub CLI";
